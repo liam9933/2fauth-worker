@@ -49,7 +49,7 @@
     </el-row>
 
     <!-- 编辑弹窗 -->
-    <el-dialog v-model="showConfigDialog" :title="isEditing ? '编辑备份源' : '添加备份源'" width="500px" destroy-on-close>
+    <el-dialog v-model="showConfigDialog" :title="isEditing ? '编辑备份源' : '添加备份源'" :width="layoutState.isMobile ? '90%' : '500px'" destroy-on-close>
       <el-form :model="form" label-position="top" ref="formRef">
         <el-form-item label="类型">
           <el-select v-model="form.type" :disabled="isEditing">
@@ -106,7 +106,7 @@
     </el-dialog>
 
     <!-- 备份弹窗 -->
-    <el-dialog v-model="showBackupDialog" title="加密备份" width="400px">
+    <el-dialog v-model="showBackupDialog" title="加密备份" :width="layoutState.isMobile ? '90%' : '400px'">
       <el-alert title="数据安全" type="info" description="请输入加密密码。此密码用于加密备份文件内容，请务必牢记！" show-icon :closable="false" style="margin-bottom: 15px;" />
       <el-input v-model="backupPassword" type="password" show-password placeholder="输入加密密码" />
       <template #footer>
@@ -116,7 +116,7 @@
     </el-dialog>
 
     <!-- 恢复列表弹窗 -->
-    <el-dialog v-model="showRestoreListDialog" title="选择备份文件恢复" width="600px">
+    <el-dialog v-model="showRestoreListDialog" title="选择备份文件恢复" :width="layoutState.isMobile ? '95%' : '600px'">
       <el-table :data="backupFiles" v-loading="isLoadingFiles" height="300px" style="width: 100%">
         <el-table-column prop="filename" label="文件名" show-overflow-tooltip />
         <el-table-column label="大小" width="100">
@@ -134,7 +134,7 @@
     </el-dialog>
 
     <!-- 恢复确认弹窗 -->
-    <el-dialog v-model="showRestoreConfirmDialog" title="解密恢复" width="400px">
+    <el-dialog v-model="showRestoreConfirmDialog" title="解密恢复" :width="layoutState.isMobile ? '90%' : '400px'">
       <el-alert title="警告" type="warning" description="恢复操作将覆盖当前所有数据！" show-icon :closable="false" style="margin-bottom: 15px;" />
       <el-input v-model="restorePassword" type="password" show-password placeholder="输入备份时的加密密码" />
       <template #footer>
@@ -150,6 +150,7 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { request } from '../utils/request'
+import { layoutState } from '../states/layout'
 
 const emit = defineEmits(['restore-success'])
 
