@@ -14,6 +14,12 @@ backend/node_modules
 backend/package-lock.json
 
 frontend/.vscode
+frontend/.github
+frontend/.vite
+frontend/.gitignore
 frontend/node_modules
 frontend/dist
+frontend/tests
+frontend/playwright-report
+frontend/playwright.config.ts
 frontend/package-lock.json

@@ -23,19 +23,19 @@ jobs:
             frontend/package.json
             backend/package.json
 
-      # 关键步骤：Wrangler 的 build 命令会调用前端构建，先进入 frontend 目录安装依赖，否则构建会失败。
+      # 安装前端依赖 (Wrangler 构建需要)
       - name: Install Frontend Dependencies
         run: |
           cd frontend
           npm install
 
-      # 安装后端依赖 (包含 wrangler 等)
+      # 安装后端依赖
       - name: Install Backend Dependencies
         run: |
           cd backend
           npm install
 
-      # 动态注入 D1 数据库ID 和 数据库名称
+      # 注入 D1 数据库配置
       - name: Inject D1 Database ID
         env:
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
@@ -45,7 +45,7 @@ jobs:
           sed -i "0,/\"database_id\":/s/\"database_id\": \".*\"/\"database_id\": \"$CLOUDFLARE_D1_DATABASE_ID\"/" backend/wrangler.jsonc
           sed -i "0,/\"database_name\":/s/\"database_name\": \".*\"/\"database_name\": \"$CLOUDFLARE_D1_DATABASE_NAME\"/" backend/wrangler.jsonc
 
-      # 初始化或更新数据库结构 (执行 schema.sql)
+      # 更新数据库结构
       - name: Update Database Schema
         uses: cloudflare/wrangler-action@v3
         with:
@@ -54,14 +54,13 @@ jobs:
           workingDirectory: 'backend'
           command: d1 execute ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME || '2fauth-db' }} --remote --file=schema.sql
 
-      # 使用官方 Action 进行部署
+      # 部署到 Cloudflare Workers
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: 'backend'
-          # 保持与 package.json 中一致的参数，开启压缩
           command: deploy --minify
           secrets: |
             OAUTH_CLIENT_ID

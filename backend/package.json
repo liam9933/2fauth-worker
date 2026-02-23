@@ -6,6 +6,7 @@
     "deploy": "wrangler deploy --minify src/index.ts"
   },
   "dependencies": {
+    "aws4fetch": "^1.0.19",
     "hono": "^4.11.10",
     "webdav": "^5.9.0"
   },

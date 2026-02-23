@@ -2,33 +2,14 @@ import { Hono } from 'hono';
 import { EnvBindings, AppError, SECURITY_CONFIG } from '../config';
 import { authMiddleware, sanitizeInput, validateBase32Secret, validateServiceName, validateAccountName, parseOTPAuthURI } from '../utils/helper';
 import { encryptData, decryptData, generateTOTP } from '../utils/crypto';
+import { encryptField, decryptField, batchInsertAccounts, batchDeleteAccounts } from '../utils/db';
 
-// 定义带有环境变量和用户变量的 Hono 实例
 const accounts = new Hono<{ Bindings: EnvBindings, Variables: { user: any } }>();
 
-// 🛡️ 为这下面所有的路由挂载鉴权中间件 (必须登录才能访问)
+// 挂载鉴权中间件
 accounts.use('*', authMiddleware);
 
-// 辅助：加密单个字段并序列化为字符串存储
-async function encryptField(data: any, key: string) {
-    const encrypted = await encryptData(data, key);
-    return JSON.stringify(encrypted);
-}
-
-// 辅助：反序列化并解密单个字段
-async function decryptField(encryptedStr: string, key: string) {
-    try {
-        const encryptedObj = JSON.parse(encryptedStr);
-        return await decryptData(encryptedObj, key);
-    } catch (e) {
-        console.error('Decryption failed', e);
-        return null;
-    }
-}
-
-// ==========================================
-// 1. 获取所有账号
-// ==========================================
+// 获取所有账号
 accounts.get('/', async (c) => {
     const pageStr = c.req.query('page');
     const limitStr = c.req.query('limit');
@@ -59,13 +40,11 @@ accounts.get('/', async (c) => {
     const accountsList = await Promise.all(results.map(async (row: any) => {
         const secret = await decryptField(row.secret, key);
         
-        // 🚀 [自动迁移] 检查是否为旧格式 (含 salt)，如果是则异步升级为极速格式
+        // [自动迁移] 旧格式 (含 salt) 异步升级为极速格式
         try {
             const raw = JSON.parse(row.secret);
             if (raw.salt && raw.salt.length > 0) {
-                // 重新加密 (encryptField 现已使用极速模式)
                 const newSecret = await encryptField(secret, key);
-                // 异步更新数据库 (不阻塞响应)
                 c.executionCtx.waitUntil(
                     c.env.DB.prepare("UPDATE accounts SET secret = ? WHERE id = ?")
                         .bind(newSecret, row.id)
@@ -98,9 +77,7 @@ accounts.get('/', async (c) => {
     return c.json(response);
 });
 
-// ==========================================
-// 2. 添加新账号
-// ==========================================
+// 添加新账号
 accounts.post('/', async (c) => {
     const { service, category, account, secret, digits = 6, period = 30 } = await c.req.json();
     const user = c.get('user');
@@ -112,7 +89,7 @@ accounts.post('/', async (c) => {
         throw new AppError('Invalid digits or period', 400);
     }
 
-    // D1: 查重
+    // 查重
     const existing = await c.env.DB.prepare(
         "SELECT id FROM accounts WHERE service = ? AND account = ?"
     ).bind(service, account).first();
@@ -123,7 +100,7 @@ accounts.post('/', async (c) => {
     const key = c.env.ENCRYPTION_KEY || c.env.JWT_SECRET;
     const secretEncrypted = await encryptField(secret.replace(/\s/g, '').toUpperCase(), key);
 
-    // D1: 插入
+    // 插入
     await c.env.DB.prepare(
         `INSERT INTO accounts (id, service, account, category, secret, digits, period, created_at, created_by) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -137,9 +114,7 @@ accounts.post('/', async (c) => {
     return c.json({ success: true, account: { ...newAccount, secret: '[PROTECTED]' } });
 });
 
-// ==========================================
-// 3. 修改账号信息
-// ==========================================
+// 修改账号信息
 accounts.put('/:id', async (c) => {
     const id = c.req.param('id');
     const { service, category, account, digits, period } = await c.req.json();
@@ -165,9 +140,7 @@ accounts.put('/:id', async (c) => {
     return c.json({ success: true, message: 'Account updated successfully' });
 });
 
-// ==========================================
-// 4. 删除指定账号
-// ==========================================
+// 删除指定账号
 accounts.delete('/:id', async (c) => {
     const id = c.req.param('id');
     const result = await c.env.DB.prepare("DELETE FROM accounts WHERE id = ?").bind(id).run();
@@ -177,17 +150,22 @@ accounts.delete('/:id', async (c) => {
     return c.json({ success: true, message: 'Account deleted successfully' });
 });
 
-// ==========================================
-// 5. 清空所有账号
-// ==========================================
+// 批量删除账号
+accounts.post('/batch-delete', async (c) => {
+    const { ids } = await c.req.json();
+    if (!Array.isArray(ids) || ids.length === 0) throw new AppError('No IDs provided', 400);
+
+    const count = await batchDeleteAccounts(c.env.DB, ids);
+    return c.json({ success: true, count, message: `Successfully deleted ${count} accounts` });
+});
+
+// 清空所有账号
 accounts.delete('/clear-all', async (c) => {
     await c.env.DB.prepare("DELETE FROM accounts").run();
     return c.json({ success: true, message: 'All accounts cleared' });
 });
 
-// ==========================================
-// 6. 核心功能：生成 TOTP 验证码
-// ==========================================
+// 生成 TOTP 验证码
 accounts.post('/generate-totp', async (c) => {
     const { secret, period = 30, digits = 6 } = await c.req.json();
     
@@ -198,9 +176,7 @@ accounts.post('/generate-totp', async (c) => {
     return c.json({ success: true, code });
 });
 
-// ==========================================
-// 7. 扫码支持：解析 TOTP URI
-// ==========================================
+// 解析 TOTP URI
 accounts.post('/parse-uri', async (c) => {
     const { uri } = await c.req.json();
     if (!uri) throw new AppError('URI is required', 400);
@@ -211,9 +187,7 @@ accounts.post('/parse-uri', async (c) => {
     return c.json({ success: true, account });
 });
 
-// ==========================================
-// 8. 从扫码结果添加账户 (修复架构师遗漏的接口)
-// ==========================================
+// 从 URI 添加账户
 accounts.post('/add-from-uri', async (c) => {
     const { uri, category } = await c.req.json();
     const user = c.get('user');
@@ -223,7 +197,7 @@ accounts.post('/add-from-uri', async (c) => {
     const parsedAccount = parseOTPAuthURI(uri);
     if (!parsedAccount) throw new AppError('Invalid OTP Auth URI', 400);
 
-    // D1: 查重
+    // 查重
     const existing = await c.env.DB.prepare(
         "SELECT id FROM accounts WHERE service = ? AND account = ?"
     ).bind(parsedAccount.issuer, parsedAccount.account).first();
@@ -246,9 +220,7 @@ accounts.post('/add-from-uri', async (c) => {
     return c.json({ success: true, account: { ...newAccount, secret: '[PROTECTED]' } });
 });
 
-// ==========================================
-// 9. 加密导出金库数据
-// ==========================================
+// 加密导出数据
 accounts.post('/export-secure', async (c) => {
     const { password } = await c.req.json();
     if (!password || password.length < SECURITY_CONFIG.MIN_EXPORT_PASSWORD_LENGTH) {
@@ -288,9 +260,7 @@ accounts.post('/export-secure', async (c) => {
     return c.json(exportFile);
 });
 
-// ==========================================
-// 10. 全能导入通道 (支持 加密/JSON/2FAS/文本)
-// ==========================================
+// 导入数据 (支持 加密/JSON/2FAS/文本)
 accounts.post('/import', async (c) => {
     const { content, type, password } = await c.req.json();
     const user = c.get('user');
@@ -344,42 +314,35 @@ accounts.post('/import', async (c) => {
     }
 
     // 过滤有效账户并去重保存
-    let addedCount = 0;
     const key = c.env.ENCRYPTION_KEY || c.env.JWT_SECRET;
 
-    // D1 批量插入 (使用事务或批量执行)
-    const stmt = c.env.DB.prepare(
-        `INSERT INTO accounts (id, service, account, category, secret, digits, period, created_at, created_by) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    );
-    const batch = [];
+    // 1. 预先获取所有已存在的账号标识，避免 N+1 查询
+    const { results: existingRows } = await c.env.DB.prepare("SELECT service, account FROM accounts").all();
+    // 内存中快速查重 (格式: service:account)
+    const existingSet = new Set(existingRows.map((row: any) => `${row.service}:${row.account}`));
+
+    // 2. 内存过滤与并行加密
+    const uniqueAccountsToInsert = [];
+    const seenInBatch = new Set();
 
     for (const acc of validAccounts) {
         if (acc.service && acc.account && validateBase32Secret(acc.secret)) {
-            // 简单查重
-            const existing = await c.env.DB.prepare("SELECT id FROM accounts WHERE service = ? AND account = ?")
-                .bind(acc.service, acc.account).first();
-            
-            if (!existing) {
-                const secretEncrypted = await encryptField(acc.secret.replace(/\s/g, '').toUpperCase(), key);
-                batch.push(stmt.bind(
-                    crypto.randomUUID(), sanitizeInput(acc.service, 50), sanitizeInput(acc.account, 100),
-                    acc.category ? sanitizeInput(acc.category, 30) : '', secretEncrypted,
-                    acc.digits || 6, acc.period || 30, Date.now(), user.username
-                ));
-                addedCount++;
+            const signature = `${acc.service}:${acc.account}`;
+            // 查重：既不在数据库中，也不在当前待插入的批次中
+            if (!existingSet.has(signature) && !seenInBatch.has(signature)) {
+                uniqueAccountsToInsert.push(acc);
+                seenInBatch.add(signature);
             }
         }
     }
 
-    if (batch.length > 0) await c.env.DB.batch(batch);
+    // 3. 使用封装好的批量插入函数
+    const insertedCount = await batchInsertAccounts(c.env.DB, uniqueAccountsToInsert, key, user.username);
 
-    return c.json({ success: true, count: addedCount, total: validAccounts.length, duplicates: validAccounts.length - addedCount });
+    return c.json({ success: true, count: insertedCount, total: validAccounts.length, duplicates: validAccounts.length - insertedCount });
 });
 
-// ==========================================
-// 11. 手动触发数据迁移 (旧格式 -> 极速格式)
-// ==========================================
+// 手动触发数据迁移 (旧格式 -> 极速格式)
 accounts.post('/migrate-crypto', async (c) => {
     const key = c.env.ENCRYPTION_KEY || c.env.JWT_SECRET;
     const limit = 50; // 每次处理 50 条以防超时
@@ -393,18 +356,24 @@ accounts.post('/migrate-crypto', async (c) => {
         return c.json({ success: true, message: '所有数据已是最新格式', migrated: 0, remaining: 0 });
     }
 
-    const updates = [];
-    for (const row of results) {
+    // 并行处理解密和加密
+    const updates = (await Promise.all(results.map(async (row: any) => {
         try {
             const plain = await decryptField(row.secret as string, key);
             const newSecret = await encryptField(plain, key);
-            updates.push(
-                c.env.DB.prepare("UPDATE accounts SET secret = ? WHERE id = ?").bind(newSecret, row.id)
-            );
-        } catch (e) { console.error(`Failed to migrate account ${row.id}`, e); }
-    }
+            return c.env.DB.prepare("UPDATE accounts SET secret = ? WHERE id = ?").bind(newSecret, row.id);
+        } catch (e) { 
+            console.error(`Failed to migrate account ${row.id}`, e);
+            return null;
+        }
+    }))).filter(Boolean);
 
-    if (updates.length > 0) await c.env.DB.batch(updates);
+    // 分批执行更新
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < updates.length; i += BATCH_SIZE) {
+        const chunk = updates.slice(i, i + BATCH_SIZE);
+        if (chunk.length > 0) await c.env.DB.batch(chunk);
+    }
 
     // 检查剩余数量
     const remaining = await c.env.DB.prepare(

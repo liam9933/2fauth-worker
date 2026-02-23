@@ -6,7 +6,7 @@ import { EnvBindings } from './config';
 // 稍后我们会在这里引入拆分好的路由模块
 import authRoutes from './routes/auth';
 import accountsRoutes from './routes/accounts';
-import webdavRoutes from './routes/webdav';
+import backupRoutes from './routes/backups';
 
 // 扩展 EnvBindings 以包含 ASSETS (Cloudflare Pages/Workers Assets)
 type Bindings = EnvBindings & { ASSETS: { fetch: (req: Request) => Promise<Response> } };
@@ -29,14 +29,14 @@ app.get('/api', (c) => c.text('🔐 2FA Secure Manager API is running!'));
 // 3. 挂载子路由
 app.route('/api/oauth', authRoutes);
 app.route('/api/accounts', accountsRoutes);
-app.route('/api/webdav', webdavRoutes);
+app.route('/api/backups', backupRoutes);
 
 // 4. 全局错误处理
 app.onError((err, c) => {
     const statusCode = (err as any).statusCode || (err as any).status || 500;
 
     // 特殊处理: WebDAV list 接口如果返回 404，说明目录不存在，视为无备份，返回空列表
-    if (c.req.path.includes('/webdav/list') && (Number(statusCode) === 404 || err.message.includes('404'))) {
+    if (c.req.path.includes('/files') && (Number(statusCode) === 404 || err.message.includes('404'))) {
         return c.json({ success: true, backups: [] });
     }
 

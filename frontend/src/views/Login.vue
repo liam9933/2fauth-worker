@@ -45,14 +45,14 @@ const loading = ref(false)
 const handleGitHubLogin = async () => {
   loading.value = true
   try {
-    // 调用后端的授权接口
+    // 获取 GitHub 授权链接
     const response = await fetch('/api/oauth/authorize')
     const data = await response.json()
 
     if (data.success && data.authUrl) {
-      // 记录 state 防御 CSRF（可选，后端也有校验机制）
+      // 记录 state 防御 CSRF
       localStorage.setItem('oauth_state', data.state)
-      // 直接把浏览器跳转到 GitHub 授权页
+      // 跳转至 GitHub
       window.location.href = data.authUrl
     } else {
       ElMessage.error(data.error || '获取授权链接失败')
