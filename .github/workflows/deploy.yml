@@ -35,15 +35,28 @@ jobs:
           cd backend
           npm install
 
+      # 准备配置文件
+      - name: Prepare Wrangler Config
+        env:
+          CONFIG_FILE: ${{ env.WRANGLER_CONFIG || 'wrangler.jsonc' }}
+        run: |
+          cd backend
+          cp wrangler.jsonc wrangler.jsonc.bak
+          
+          if [ "$CONFIG_FILE" != "wrangler.jsonc" ]; then
+            cp "$CONFIG_FILE" wrangler.jsonc
+          fi
+
       # 注入 D1 数据库配置
       - name: Inject D1 Database ID
         env:
+          CONFIG_FILE: ${{ env.WRANGLER_CONFIG || 'wrangler.jsonc' }}
           CLOUDFLARE_D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
           CLOUDFLARE_D1_DATABASE_NAME: ${{ secrets.CLOUDFLARE_D1_DATABASE_NAME || '2fauth-db' }}
         run: |
           # 仅替换第一个匹配到的 database_id (对应生产环境配置)，保留 dev 环境配置
-          sed -i "0,/\"database_id\":/s/\"database_id\": \".*\"/\"database_id\": \"$CLOUDFLARE_D1_DATABASE_ID\"/" backend/wrangler.jsonc
-          sed -i "0,/\"database_name\":/s/\"database_name\": \".*\"/\"database_name\": \"$CLOUDFLARE_D1_DATABASE_NAME\"/" backend/wrangler.jsonc
+          sed -i "0,/\"database_id\":/s/\"database_id\": \".*\"/\"database_id\": \"$CLOUDFLARE_D1_DATABASE_ID\"/" "backend/wrangler.jsonc"
+          sed -i "0,/\"database_name\":/s/\"database_name\": \".*\"/\"database_name\": \"$CLOUDFLARE_D1_DATABASE_NAME\"/" "backend/wrangler.jsonc"
 
       # 更新数据库结构
       - name: Update Database Schema
@@ -68,6 +81,9 @@ jobs:
           OAUTH_NODELOC_CLIENT_ID: ${{ secrets.OAUTH_NODELOC_CLIENT_ID }}
           OAUTH_NODELOC_CLIENT_SECRET: ${{ secrets.OAUTH_NODELOC_CLIENT_SECRET }}
           OAUTH_NODELOC_REDIRECT_URI: ${{ secrets.OAUTH_NODELOC_REDIRECT_URI }}
+          OAUTH_GITEE_CLIENT_ID: ${{ secrets.OAUTH_GITEE_CLIENT_ID }}
+          OAUTH_GITEE_CLIENT_SECRET: ${{ secrets.OAUTH_GITEE_CLIENT_SECRET }}
+          OAUTH_GITEE_REDIRECT_URI: ${{ secrets.OAUTH_GITEE_REDIRECT_URI }}
         run: |
           SECRETS="OAUTH_ALLOWED_USERS
           ENCRYPTION_KEY
@@ -77,6 +93,7 @@ jobs:
             "OAUTH_GITHUB_CLIENT_ID" "OAUTH_GITHUB_CLIENT_SECRET" "OAUTH_GITHUB_REDIRECT_URI"
             "OAUTH_CLOUDFLARE_CLIENT_ID" "OAUTH_CLOUDFLARE_CLIENT_SECRET" "OAUTH_CLOUDFLARE_ORG_DOMAIN" "OAUTH_CLOUDFLARE_REDIRECT_URI"
             "OAUTH_NODELOC_CLIENT_ID" "OAUTH_NODELOC_CLIENT_SECRET" "OAUTH_NODELOC_REDIRECT_URI"
+            "OAUTH_GITEE_CLIENT_ID" "OAUTH_GITEE_CLIENT_SECRET" "OAUTH_GITEE_REDIRECT_URI"
           )
           
           for VAR in "${OPTIONAL_VARS[@]}"; do
@@ -111,5 +128,17 @@ jobs:
           OAUTH_NODELOC_CLIENT_ID: ${{ secrets.OAUTH_NODELOC_CLIENT_ID }}
           OAUTH_NODELOC_CLIENT_SECRET: ${{ secrets.OAUTH_NODELOC_CLIENT_SECRET }}
           OAUTH_NODELOC_REDIRECT_URI: ${{ secrets.OAUTH_NODELOC_REDIRECT_URI }}
+          OAUTH_GITEE_CLIENT_ID: ${{ secrets.OAUTH_GITEE_CLIENT_ID }}
+          OAUTH_GITEE_CLIENT_SECRET: ${{ secrets.OAUTH_GITEE_CLIENT_SECRET }}
+          OAUTH_GITEE_REDIRECT_URI: ${{ secrets.OAUTH_GITEE_REDIRECT_URI }}
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+      # 恢复配置文件
+      - name: Restore Wrangler Config
+        if: always() 
+        run: |
+          cd backend
+          if [ -f wrangler.jsonc.bak ]; then
+            mv wrangler.jsonc.bak wrangler.jsonc
+          fi

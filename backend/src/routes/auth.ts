@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { setCookie } from 'hono/cookie';
+import { setCookie, deleteCookie } from 'hono/cookie';
 import { EnvBindings, AppError } from '../config';
 import { generateSecureJWT } from '../utils/crypto';
 import { authMiddleware } from '../utils/helper';
@@ -108,6 +108,18 @@ auth.post('/callback/:provider', async (c) => {
     return c.json({
         success: true,
         userInfo: payload.userInfo
+    });
+});
+
+// ==========================================
+// 2.5 退出登录 (清除 Cookies)
+// ==========================================
+auth.post('/logout', (c) => {
+    deleteCookie(c, 'auth_token');
+    deleteCookie(c, 'csrf_token');
+    return c.json({
+        success: true,
+        message: 'Logged out successfully'
     });
 });
 

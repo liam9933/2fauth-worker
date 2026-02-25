@@ -3,11 +3,14 @@ import { BaseOAuthProvider } from './BaseOAuthProvider';
 import { GitHubProvider } from './GitHubProvider';
 import { CloudflareAccessProvider } from './CloudflareAccessProvider';
 import { NodeLocProvider } from './NodeLocProvider';
+import { GiteeProvider } from './GiteeProvider';
 
 export function getOAuthProvider(providerId: string, env: EnvBindings): BaseOAuthProvider {
     switch (providerId.toLowerCase()) {
         case 'github':
             return new GitHubProvider(env);
+        case 'gitee':
+            return new GiteeProvider(env);
         case 'cloudflare':
             return new CloudflareAccessProvider(env);
         case 'nodeloc':
@@ -23,6 +26,7 @@ export function getAvailableProviders(env: EnvBindings) {
     const githubProvider = new GitHubProvider(env);
     const cloudflareProvider = new CloudflareAccessProvider(env);
     const nodelocProvider = new NodeLocProvider(env);
+    const giteeProvider = new GiteeProvider(env);
 
     if (env.OAUTH_GITHUB_CLIENT_ID && env.OAUTH_GITHUB_CLIENT_SECRET) {
         providers.push({
@@ -30,6 +34,15 @@ export function getAvailableProviders(env: EnvBindings) {
             name: githubProvider.name,
             icon: githubProvider.icon,
             color: githubProvider.color
+        });
+    }
+
+    if (env.OAUTH_GITEE_CLIENT_ID && env.OAUTH_GITEE_CLIENT_SECRET) {
+        providers.push({
+            id: giteeProvider.id,
+            name: giteeProvider.name,
+            icon: giteeProvider.icon,
+            color: giteeProvider.color,
         });
     }
 

@@ -146,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Iphone, Plus, Camera, Edit, Sort, Upload, Download, Cloudy, Sunny, Moon, SwitchButton, Fold, Expand, Tools } from '@element-plus/icons-vue'
@@ -154,13 +154,13 @@ import { layoutState } from '../states/layout'
 import { isDark, toggleTheme } from '../states/theme'
 import { userState } from '../states/user'
 
-import AccountList from '../components/AccountList.vue'
-import AddAccountScan from '../components/AddAccountScan.vue'
-import AddAccountManual from '../components/AddAccountManual.vue'
-import DataExport from '../components/DataExport.vue'
-import DataImport from '../components/DataImport.vue'
-import DataBackup from '../components/DataBackup.vue'
-import UtilityTools from '../components/UtilityTools.vue'
+const AccountList = defineAsyncComponent(() => import('../components/AccountList.vue'))
+const AddAccountScan = defineAsyncComponent(() => import('../components/AddAccountScan.vue'))
+const AddAccountManual = defineAsyncComponent(() => import('../components/AddAccountManual.vue'))
+const DataExport = defineAsyncComponent(() => import('../components/DataExport.vue'))
+const DataImport = defineAsyncComponent(() => import('../components/DataImport.vue'))
+const DataBackup = defineAsyncComponent(() => import('../components/DataBackup.vue'))
+const UtilityTools = defineAsyncComponent(() => import('../components/UtilityTools.vue'))
 
 const activeTab = ref('accounts')
 const accountListRef = ref(null)
@@ -185,8 +185,8 @@ const handleSuccess = () => {
   })
 }
 
-const handleLogout = () => {
-  userState.clearUserInfo()
+const handleLogout = async () => {
+  await userState.logout()
   router.push('/login')
   ElMessage.success('已安全退出')
 }

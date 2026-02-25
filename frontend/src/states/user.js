@@ -22,6 +22,18 @@ export const userState = reactive({
     localStorage.removeItem('userInfo')
   },
 
+  async logout() {
+    try {
+      // 请求后端清除 HttpOnly Cookie
+      await request('/api/oauth/logout', { method: 'POST' })
+    } catch (e) {
+      console.error('Logout request failed', e)
+    } finally {
+      // 无论后端是否成功，前端都必须清理状态并跳转
+      this.clearUserInfo()
+    }
+  },
+
   async fetchUserInfo() {
     try {
       // 使用 silent: true 避免未登录时弹出 "Unauthorized" 错误提示
