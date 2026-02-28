@@ -1,6 +1,5 @@
--- 账号表：每一行存储一个 2FA 凭据
 -- 账号表：存储 2FA 凭据
-CREATE TABLE IF NOT EXISTS accounts (
+CREATE TABLE IF NOT EXISTS vault (
     id TEXT PRIMARY KEY,
     service TEXT NOT NULL,
     account TEXT NOT NULL,
@@ -8,14 +7,14 @@ CREATE TABLE IF NOT EXISTS accounts (
     secret TEXT NOT NULL,          -- 加密存储 {encrypted, iv, salt}
     digits INTEGER DEFAULT 6,
     period INTEGER DEFAULT 30,
+    algorithm TEXT DEFAULT 'SHA1',
     created_at INTEGER,
     created_by TEXT,
     updated_at INTEGER,
     updated_by TEXT
 );
 
--- 备份源配置表
-DROP TABLE IF EXISTS webdav_configs;
+-- 云端备份源配置表
 CREATE TABLE IF NOT EXISTS backup_providers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,            -- 类型: 'webdav', 's3'
@@ -24,6 +23,7 @@ CREATE TABLE IF NOT EXISTS backup_providers (
     config TEXT NOT NULL,          -- 配置 JSON (敏感字段加密)
     auto_backup BOOLEAN DEFAULT 0, -- 自动备份开关
     auto_backup_password TEXT,     -- 自动备份加密密码 (加密存储)
+    auto_backup_retain INTEGER DEFAULT 30, -- 自动备份保留份数，0为无限
     last_backup_at INTEGER,        -- 最后备份时间戳
     last_backup_status TEXT,       -- 状态: 'success' | 'failed'
     created_at INTEGER,
@@ -31,5 +31,5 @@ CREATE TABLE IF NOT EXISTS backup_providers (
 );
 
 -- 索引
-CREATE INDEX IF NOT EXISTS idx_accounts_service ON accounts(service);
-CREATE INDEX IF NOT EXISTS idx_accounts_created_at ON accounts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vault_service ON vault(service);
+CREATE INDEX IF NOT EXISTS idx_vault_created_at ON vault(created_at DESC);

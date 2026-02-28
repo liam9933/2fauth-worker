@@ -2,15 +2,18 @@
   "name": "backend",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev src/index.ts --env dev --host 0.0.0.0 --port 8787 --test-scheduled",
-    "deploy": "wrangler deploy --minify src/index.ts"
+    "dev": "wrangler dev --config wrangler.dev.jsonc --host 0.0.0.0 --port 8787 --test-scheduled",
+    "deploy": "wrangler deploy --minify"
   },
   "dependencies": {
     "aws4fetch": "^1.0.19",
+    "drizzle-orm": "^0.30.9",
     "hono": "^4.11.10",
     "webdav": "^5.9.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260226.1",
+    "drizzle-kit": "^0.20.14",
     "wrangler": "^3.0.0"
   }
 }

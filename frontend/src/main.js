@@ -1,23 +1,29 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import { ElMessage } from 'element-plus'
 import 'element-plus/dist/index.css'
 import { registerSW } from 'virtual:pwa-register'
 import 'element-plus/theme-chalk/dark/css-vars.css'
-import './main.css'
-import './dark.css'
-import App from './App.vue'
-import router from './router'
-import { initTheme } from './states/theme'
+import '@/app/styles/main.css'
+import '@/app/styles/dark.css'
+import App from '@/app/app.vue'
+import router from '@/app/router'
+import { useThemeStore } from '@/shared/stores/themeStore'
+import { VueQueryPlugin } from '@tanstack/vue-query'
+import { useVaultStore } from '@/features/vault/store/vaultStore'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-// 初始化主题状态 (从 localStorage 恢复)
-initTheme()
+app.use(pinia)
+
+// 初始化主题状态
+const themeStore = useThemeStore()
+themeStore.initTheme()
 
 // PWA Service Worker 注册
 registerSW({
   onOfflineReady() {
-    // 当 App 所有的资源都被缓存完毕，可以离线访问时触发
     ElMessage.success({
       message: '应用已缓存，支持离线访问',
       duration: 3000
@@ -26,4 +32,19 @@ registerSW({
 })
 
 app.use(router)
-app.mount('#app')
+app.use(VueQueryPlugin, {
+  queryClientConfig: {
+    defaultOptions: {
+      queries: {
+        retry: 1,
+        refetchOnWindowFocus: false, // 避免切换窗口时频繁请求列表
+        staleTime: 1000 * 60 * 5 // 5分钟内数据视为新鲜，不自动重发请求
+      }
+    }
+  }
+})
+
+const vaultStore = useVaultStore()
+vaultStore.init().then(() => {
+  app.mount('#app')
+})
