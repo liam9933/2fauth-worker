@@ -3,7 +3,7 @@
     <el-card class="login-card" shadow="hover">
       <div class="logo-container">
         <el-icon :size="54" color="#409EFC"><Lock /></el-icon>
-        <h2>2FAuth</h2>
+        <h2>2FAuth Worker</h2>
         <p class="subtitle">您的专属云端双因素认证管家</p>
       </div>
 

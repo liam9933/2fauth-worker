@@ -6,6 +6,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { execSync } from 'child_process'
+
+let commitHash = ''
+try {
+  commitHash = execSync('git rev-parse --short HEAD').toString().trim()
+} catch (e) {
+  commitHash = 'unknown'
+}
 
 export default defineConfig({
   plugins: [
@@ -61,6 +69,9 @@ export default defineConfig({
       }
     })
   ],
+  define: {
+    __COMMIT_HASH__: JSON.stringify(commitHash)
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

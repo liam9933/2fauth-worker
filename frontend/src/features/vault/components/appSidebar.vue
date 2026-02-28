@@ -8,7 +8,7 @@
       :collapse="isCollapse"
     >
       <el-menu-item index="vault">
-        <el-icon><Iphone /></el-icon>
+        <el-icon><CopyDocument /></el-icon>
         <template #title><span>我的账户</span></template>
       </el-menu-item>
 
@@ -66,7 +66,7 @@
         style="border-right: none;"
       >
         <el-menu-item index="vault">
-          <el-icon><Iphone /></el-icon>
+          <el-icon><CopyDocument /></el-icon>
           <span>我的账户</span>
         </el-menu-item>
         <el-sub-menu index="add-vault">
@@ -95,9 +95,9 @@
         </el-menu-item>
       </el-menu>
 
-      <div class="sidebar-footer">
-        <el-button circle :icon="themeStore.isDark ? Sunny : Moon" @click="themeStore.toggleTheme" />
-        <el-button circle @click="handleLogout" title="退出登录">
+      <div class="sidebar-footer" style="display: flex; gap: 15px; justify-content: center; padding: 20px 0;">
+        <el-button circle size="medium" :icon="themeStore.isDark ? Sunny : Moon" @click="themeStore.toggleTheme" />
+        <el-button circle size="medium" @click="handleLogout" title="退出登录">
           <el-icon><SwitchButton /></el-icon>
         </el-button>
       </div>
@@ -110,7 +110,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  Iphone, Plus, Camera, Edit, Sort, Upload, Download,
+  CopyDocument, Plus, Camera, Edit, Sort, Upload, Download,
   Cloudy, Sunny, Moon, SwitchButton, Fold, Expand, Tools
 } from '@element-plus/icons-vue'
 import { useLayoutStore } from '@/shared/stores/layoutStore'

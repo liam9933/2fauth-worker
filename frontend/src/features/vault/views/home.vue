@@ -47,6 +47,9 @@
 <script setup>
 import { ref, nextTick, defineAsyncComponent, watch } from 'vue'
 import AppSidebar from '@/features/vault/components/appSidebar.vue'
+import { useLayoutStore } from '@/shared/stores/layoutStore'
+
+const layoutStore = useLayoutStore()
 
 const VaultList     = defineAsyncComponent(() => import('@/features/vault/components/vaultList.vue'))
 const AddVaultScan  = defineAsyncComponent(() => import('@/features/vault/components/addVaultScan.vue'))
@@ -76,6 +79,19 @@ watch(vaultListRef, (ref) => {
   if (ref && pendingRefetch) {
     pendingRefetch = false
     nextTick(() => ref.fetchVault())
+  }
+})
+
+// 监听头部 Logo 点击事件，无刷新跳回主列表
+watch(() => layoutStore.homeTabReset, () => {
+  if (activeTab.value !== 'vault') {
+    activeTab.value = 'vault'
+  }
+  // 强制刷新一下列表数据
+  if (vaultListRef.value) {
+    nextTick(() => vaultListRef.value?.fetchVault())
+  } else {
+    pendingRefetch = true
   }
 })
 </script>
