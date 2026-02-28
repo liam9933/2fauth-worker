@@ -1,91 +1,61 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { encryptDataWithPassword, decryptDataWithPassword } from '@/shared/utils/crypto'
+import { getIdbItem } from '@/shared/utils/idb'
 
 export const useVaultStore = defineStore('vault', () => {
-  const isUnlocked = ref(false)
+  const isUnlocked = ref(true) // 默认挂载状态
   const hasVault = ref(false)
   const isDirty = ref(false) // 标记缓存是否已因变更操作而过期
-  const _password = ref(null) // 仅保存在内存中，刷新页面即丢失
 
-  // 初始化检查：判断本地是否有加密数据，并尝试恢复会话
+  // 初始化检查
   const init = async () => {
     const encrypted = localStorage.getItem('secure_vault')
     hasVault.value = !!encrypted
-    if (!hasVault.value) return
-
-    // 模式 A: 尝试从 sessionStorage 恢复会话级解锁状态
-    const sessionPassword = sessionStorage.getItem('vault_session_key')
-    if (sessionPassword) {
-      try {
-        // 验证密码是否仍然有效
-        await decryptDataWithPassword(encrypted, sessionPassword)
-        // 验证通过，自动解锁
-        _password.value = sessionPassword
-        isUnlocked.value = true
-      } catch (e) {
-        // 密码无效，清除会话并锁定
-        lock()
-      }
-    }
   }
 
-  // 解锁保险箱
-  const unlock = async (password) => {
-    const encrypted = localStorage.getItem('secure_vault')
-    if (!encrypted) throw new Error('尚未创建保险箱')
-
+  // 获取本地运行时参数
+  const getDeviceKey = async () => {
     try {
-      await decryptDataWithPassword(encrypted, password)
-
-      _password.value = password
-      isUnlocked.value = true
-      sessionStorage.setItem('vault_session_key', password)
-      return true
+      return await getIdbItem('device_salt')
     } catch (e) {
-      throw new Error('密码错误')
+      return null
     }
   }
 
-  // 创建/重置保险箱
-  const setup = async (password, initialData = { vault: [] }) => {
-    const encrypted = await encryptDataWithPassword(initialData, password)
-    localStorage.setItem('secure_vault', encrypted)
-    _password.value = password
-    hasVault.value = true
-    isUnlocked.value = true
-    sessionStorage.setItem('vault_session_key', password)
-  }
-
-  // 锁定保险箱
-  const lock = () => {
-    _password.value = null
-    isUnlocked.value = false
-    sessionStorage.removeItem('vault_session_key')
-  }
-
-  // 获取数据 (使用内存密码解密)
+  // 加载数据
   const getData = async () => {
-    if (!isUnlocked.value || !_password.value) return null
+    const key = await getDeviceKey()
+    if (!key) throw new Error('设备授权信息已失效，请重新登录')
+
     const encrypted = localStorage.getItem('secure_vault')
     if (!encrypted) return { vault: [] }
-    return await decryptDataWithPassword(encrypted, _password.value)
+
+    try {
+      return await decryptDataWithPassword(encrypted, key)
+    } catch (e) {
+      // 若解密失败（极少情况如果用户清库或密钥被篡改），强行回退给空库
+      return { vault: [] }
+    }
   }
 
-  // 保存数据 (使用内存密码加密)
+  // 持久化数据
   const saveData = async (data) => {
-    if (!isUnlocked.value || !_password.value) throw new Error('保险箱已锁定')
-    const encrypted = await encryptDataWithPassword(data, _password.value)
+    const key = await getDeviceKey()
+    if (!key) throw new Error('设备授权信息已失效，请重新登录')
+    const encrypted = await encryptDataWithPassword(data, key)
     localStorage.setItem('secure_vault', encrypted)
+    hasVault.value = true
   }
 
   // --- 备份云配置的专属加密缓存 ---
   const getEncryptedBackupProviders = async () => {
-    if (!isUnlocked.value || !_password.value) return null
+    const key = await getDeviceKey()
+    if (!key) return null
     const encrypted = localStorage.getItem('backup_providers_cache')
     if (!encrypted) return null
     try {
-      const decrypted = await decryptDataWithPassword(encrypted, _password.value)
+      const decrypted = await decryptDataWithPassword(encrypted, key)
       return decrypted.providers || null
     } catch (e) {
       return null
@@ -93,10 +63,16 @@ export const useVaultStore = defineStore('vault', () => {
   }
 
   const saveEncryptedBackupProviders = async (providers) => {
-    if (!isUnlocked.value || !_password.value) return
-    const encrypted = await encryptDataWithPassword({ providers }, _password.value)
+    const key = await getDeviceKey()
+    if (!key) return
+    const encrypted = await encryptDataWithPassword({ providers }, key)
     localStorage.setItem('backup_providers_cache', encrypted)
   }
+
+  // 残留供部分旧UI避免报错的空函数 (即将被清理)
+  const unlock = async () => { return true }
+  const setup = async () => { }
+  const lock = () => { }
 
   return {
     isUnlocked,

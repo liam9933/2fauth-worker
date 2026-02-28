@@ -10,8 +10,9 @@
 
 
 [**Demo演示**](https://2fa.nezha.pp.ua)  https://2fa.nezha.pp.ua
-- 设置任何用户都能登录，不受登录白名单限制，正常部署，只有设置的白名单用户才能登录
-- 演示数据可以任意修改、删除；
+
+- 演示站默认允许任何用户登录，区别于正常部署只有白名单用户才允许登录
+- 演示站数据可以任意修改、删除
 
 ---
 
@@ -162,7 +163,7 @@ cd backend
 npx wrangler d1 execute 2fauth-db-dev --local --env dev --file=schema.sql
 
 # 4. 终端启动应用
-# 终端 1:
+```bash
 cd backend && npm run dev
 ```
 

@@ -31,6 +31,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Loading } from '@element-plus/icons-vue'
 import { useUserStore } from '@/features/auth/store/userStore'
+import { setIdbItem } from '@/shared/utils/idb'
 
 const route = useRoute()
 const router = useRouter()
@@ -125,6 +126,11 @@ onMounted(async () => {
 
     if (data.success) {
       // 登录成功！Token 已写入 httpOnly Cookie
+      // 持久化客户端参数
+      if (data.deviceKey) {
+        await setIdbItem('device_salt', data.deviceKey)
+      }
+
       // 立即调用接口确认会话有效性，并更新用户信息
       const userStore = useUserStore()
       await userStore.fetchUserInfo()

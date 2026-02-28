@@ -48,7 +48,7 @@ auth.post('/callback/:provider', async (c) => {
     const service = getService(c);
 
     // 调用 Service 层处理登录
-    const { token, userInfo } = await service.handleOAuthCallback(providerName, body);
+    const { token, userInfo, deviceKey } = await service.handleOAuthCallback(providerName, body);
 
     // 1. 设置 httpOnly 的鉴权 Cookie
     setCookie(c, 'auth_token', token, {
@@ -71,7 +71,8 @@ auth.post('/callback/:provider', async (c) => {
 
     return c.json({
         success: true,
-        userInfo
+        userInfo,
+        deviceKey
     });
 });
 

@@ -1,12 +1,7 @@
 <template>
   <div class="vault-list-wrapper" style="min-height: 400px;">
-    <!-- 0. 保险箱锁定状态 -->
-    <div v-if="!vaultStore.isUnlocked" class="vault-lock-wrapper">
-      <VaultUnlock @unlocked="handleUnlocked" />
-    </div>
-
-    <!-- 1. 加载状态 (已解锁且本地缓存尚未挂载，或者正在首次/后台请求时但无数据) -->
-    <div v-else-if="(isLoading || isFetching) && vault.length === 0" class="loading-state" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 400px; color: var(--el-text-color-secondary);">
+    <!-- 1. 加载状态 (本地缓存尚未挂载，或者正在首次/后台请求时但无数据) -->
+    <div v-if="(isLoading || isFetching) && vault.length === 0" class="loading-state" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 400px; color: var(--el-text-color-secondary);">
       <el-icon class="is-loading" :size="48" style="margin-bottom: 20px; color: var(--el-color-primary);"><Loading /></el-icon>
       <p style="font-size: 16px; letter-spacing: 1px;">数据获取中, 请稍候...</p>
     </div>
@@ -178,9 +173,6 @@ import { useVaultStore } from '@/features/vault/store/vaultStore'
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { generateTOTP } from '@/shared/utils/totp'
 import { copyToClipboard } from '@/shared/utils/common'
-
-// 异步引入解锁组件，避免循环依赖
-const VaultUnlock = defineAsyncComponent(() => import('@/features/vault/components/vaultUnlock.vue'))
 
 const emit = defineEmits(['switch-tab'])
 const queryClient = useQueryClient()
@@ -528,10 +520,8 @@ const copySecret = async () => {
 }
 
 onMounted(() => {
-  // 如果已经解锁 (例如从其他 Tab 切回来)，尝试加载缓存
-  if (vaultStore.isUnlocked) {
-    handleUnlocked()
-  }
+  // 组件加载即尝试读取本地离线数据
+  handleUnlocked()
   globalTimer = setInterval(updateVaultStatus, 1000)
 })
 

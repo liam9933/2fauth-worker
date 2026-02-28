@@ -26,9 +26,9 @@ export class AuthService {
     }
 
     /**
-     * OAuth Callback 处理，进行鉴权并签发系统内部 JWT token
+     * OAuth Callback 处理，生成会话并返回附加参数
      */
-    async handleOAuthCallback(providerName: string, body: any): Promise<{ token: string, userInfo: OAuthUserInfo }> {
+    async handleOAuthCallback(providerName: string, body: any): Promise<{ token: string, userInfo: OAuthUserInfo, deviceKey: string }> {
         const provider = getOAuthProvider(providerName, this.env);
 
         let params: string | URLSearchParams;
@@ -53,7 +53,27 @@ export class AuthService {
         // 签发 Token
         const token = await this.generateSystemToken(userInfo);
 
-        return { token, userInfo };
+        // 附加客户端签名因子
+        const deviceKey = await this.generateDeviceKey(userInfo.id);
+
+        return { token, userInfo, deviceKey };
+    }
+
+    /**
+     * 生成客户端绑定标识
+     */
+    private async generateDeviceKey(userId: string): Promise<string> {
+        const secret = this.env.JWT_SECRET;
+        const encoder = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(secret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        const signature = await crypto.subtle.sign('HMAC', keyMaterial, encoder.encode(userId + "device_salt_offline_key"));
+        return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     /**

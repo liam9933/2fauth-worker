@@ -228,15 +228,11 @@ const isRestoring = ref(false)
 
 // --- API 交互 ---
 const fetchProviders = async () => {
-  // 1. 离线优先：尝试加载加密缓存 (仅在保险箱已解锁时有效)
-  if (vaultStore.isUnlocked) {
-    const cachedEncrypted = await vaultStore.getEncryptedBackupProviders()
-    if (cachedEncrypted && Array.isArray(cachedEncrypted)) {
-      providers.value = cachedEncrypted
-      // 有缓存时静默更新，不转圈圈
-    } else {
-      isLoading.value = true
-    }
+  // 1. 离线优先：尝试加载加密缓存
+  const cachedEncrypted = await vaultStore.getEncryptedBackupProviders()
+  if (cachedEncrypted && Array.isArray(cachedEncrypted)) {
+    providers.value = cachedEncrypted
+    // 有缓存时静默更新，不转圈圈
   } else {
     isLoading.value = true
   }
@@ -245,10 +241,8 @@ const fetchProviders = async () => {
     const res = await request('/api/backups/providers')
     if (res.success) {
       providers.value = res.providers
-      // 2. 更新加密缓存 (如果保险箱已解锁)
-      if (vaultStore.isUnlocked) {
-        await vaultStore.saveEncryptedBackupProviders(res.providers)
-      }
+      // 2. 更新加密缓存
+      await vaultStore.saveEncryptedBackupProviders(res.providers)
     }
   } finally { isLoading.value = false }
 }

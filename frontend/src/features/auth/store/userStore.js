@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { request } from '@/shared/utils/request'
 import { useVaultStore } from '@/features/vault/store/vaultStore'
+import { removeIdbItem } from '@/shared/utils/idb'
 
 export const useUserStore = defineStore('user', () => {
   const getStoredUser = () => {
@@ -19,13 +20,19 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem('userInfo', JSON.stringify(info))
   }
 
-  const clearUserInfo = () => {
+  const clearUserInfo = async () => {
     userInfo.value = {}
     localStorage.removeItem('userInfo')
     localStorage.removeItem('secure_vault')
     localStorage.removeItem('backup_providers_cache')
 
-    // 锁定保险箱
+    // 清理本地持久化运行配置
+    try {
+      await removeIdbItem('device_salt')
+    } catch (e) {
+      console.error('Failed to remove device_salt from IDB', e)
+    }
+
     const vaultStore = useVaultStore()
     vaultStore.lock()
   }
@@ -36,7 +43,7 @@ export const useUserStore = defineStore('user', () => {
     } catch (e) {
       console.error('Logout request failed', e)
     } finally {
-      clearUserInfo()
+      await clearUserInfo()
     }
   }
 
@@ -48,7 +55,7 @@ export const useUserStore = defineStore('user', () => {
         return true
       }
     } catch (e) {
-      clearUserInfo()
+      await clearUserInfo()
       return false
     }
     return false
