@@ -80,8 +80,9 @@ onMounted(async () => {
       errorMsg.value = 'Telegram 登录缺少签名参数'
       return
     }
-    // Telegram 将所有 Query 参数传给后端验签
-    payload = { ...route.query }
+    // Telegram 默认不原样返回 state 参数，因此我们从前端缓存中将其补齐发送给后端校验
+    const savedState = localStorage.getItem('oauth_state')
+    payload = { ...route.query, state: savedState }
   } else {
     if (!code || !state) {
       errorMsg.value = 'URL 缺少必要的授权凭证参数'

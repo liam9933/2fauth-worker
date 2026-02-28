@@ -54,7 +54,7 @@ telegram.post('/webhook', async (c) => {
         // 或者使用配置的域名
         // const origin = `https://${c.env.OAUTH_TELEGRAM_BOT_DOMAIN}`;
 
-        const callbackUrl = `${origin}/callback/telegram`;
+        const callbackUrl = `${origin}/callback/telegram?state=${state}`;
 
         await sendTelegramMessage(token, chatId, '请点击下方按钮完成登录验证：', {
             inline_keyboard: [[
