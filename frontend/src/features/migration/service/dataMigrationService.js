@@ -45,18 +45,28 @@ export const dataMigrationService = {
             return 'phonefactor'
         }
 
+        let textContent = content
+        if (content instanceof ArrayBuffer || content instanceof Uint8Array) {
+            try {
+                const bytes = content instanceof Uint8Array ? content : new Uint8Array(content)
+                textContent = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+            } catch (e) {
+                textContent = ''
+            }
+        }
+
         if (filename && filename.toLowerCase().endsWith('.csv')) {
-            const firstLine = content.split('\n')[0].toLowerCase()
+            const firstLine = typeof textContent === 'string' ? textContent.split('\n')[0].toLowerCase() : ''
             if (firstLine.includes('login_totp')) return 'bwauth_csv'
             return 'generic_csv'
         }
 
-        if (typeof content === 'string' && content.trim().startsWith('otpauth://')) {
+        if (typeof textContent === 'string' && textContent.trim().startsWith('otpauth://')) {
             return 'text'
         }
 
-        if (typeof content === 'string') {
-            const json = tryParseJSON(content)
+        if (typeof textContent === 'string') {
+            const json = tryParseJSON(textContent)
             if (json) {
                 if (Array.isArray(json.items) && json.items.length > 0 && json.items[0].login && json.items[0].login.totp) return 'bwauth_json'
                 if (json.encrypted === true && json.app === '2fauth') return 'encrypted'
@@ -446,7 +456,7 @@ export const dataMigrationService = {
                 SQL = await initSqlJs()
             }
             const db = new SQL.Database(new Uint8Array(dbBuffer))
-            
+
             // 检查accounts表是否存在
             const tables = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='accounts'")
             if (tables.length === 0) {
@@ -548,6 +558,19 @@ export const dataMigrationService = {
         if (type === 'phonefactor') {
             return await this.parsePhoneFactor(content)
         }
+
+        // 统一处理将可能传入的 ArrayBuffer 转回 string，以便后续非数据库格式的解析
+        let textContent = content
+        if (content instanceof ArrayBuffer || content instanceof Uint8Array) {
+            try {
+                const bytes = content instanceof Uint8Array ? content : new Uint8Array(content)
+                textContent = new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+            } catch (e) {
+                console.warn('Failed to decode buffer as text', e)
+            }
+        }
+        // 对于非 phonefactor 的格式，后续逻辑全部使用 textContent 替代 content
+        content = textContent;
 
         if (type === 'bwauth_csv' || type === 'generic_csv') {
             rawVault = csvStrategy.parseCsv(content)

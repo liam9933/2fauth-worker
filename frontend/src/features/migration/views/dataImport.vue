@@ -20,17 +20,12 @@
         >
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
           <div class="el-upload__text">
-            将备份文件或迁移二维码截图拖到此处，或 <em>点击上传</em>
+            <p><el-tag type="success" effect="light">💡 自动识别文件类型导入</el-tag></p>
+            <p>将备份文件或迁移二维码截图拖到此处，或 <em>点击上传</em></p>
           </div>
           <template #tip>
             <div class="import-tips">
-              <el-alert 
-                title="💡 自动识别文件类型进行导入" 
-                type="success" 
-                :closable="false" 
-                style="margin-bottom: 20px;" 
-              />
-              
+              <h4>支持情况说明</h4>
               <div class="format-groups">
                 <div class="format-group">
                   <h4>📁 本系统备份</h4>
@@ -55,14 +50,16 @@
                   </div>
                   <div class="ms-tip">
                     <span>Microsoft Authenticator <small>(仅支持 Android)</small></span>
-                    <p>将 PhoneFactor 文件直接上传，Android 手机该文件路径为： <code>/data/data/com.azure.authenticator/databases/PhoneFactor</code></p>
+                    <p>Android 手机导出文件 <code>/data/data/com.azure.authenticator/databases/PhoneFactor</code> 后，直接上传</p>
                   </div>
                 </div>
 
                 <div class="format-group">
                   <h4>📄 通用格式</h4>
                   <div class="tags">
-                    <el-tag type="info" effect="light"><el-icon><Document /></el-icon> OTPAuth URI (.txt)</el-tag>
+                    <el-tag type="info" effect="light"><el-icon><Document /></el-icon> 通用格式 (.json)</el-tag>
+                    <el-tag type="info" effect="light"><el-icon><Tickets /></el-icon> OTPAuth URI (.txt)</el-tag>
+                    <el-tag type="info" effect="light"><el-icon><Grid /></el-icon> 电子表格 (.csv)</el-tag>
                   </div>
                 </div>
               </div>
@@ -115,7 +112,7 @@
 </template>
 
 <script setup>
-import { UploadFilled, Lock, Unlock, Document } from '@element-plus/icons-vue'
+import { UploadFilled, Lock, Unlock, Document, Tickets, Grid } from '@element-plus/icons-vue'
 import { useDataImport } from '@/features/migration/composables/useDataImport'
 
 // icons for import options (follow export page style)
@@ -167,7 +164,7 @@ const {
   text-align: left;
   margin-top: 25px;
   background-color: var(--el-fill-color-lighter);
-  padding: 20px;
+  padding: 0px 20px 20px 20px;
   border-radius: 8px;
   border: 1px dashed var(--el-border-color);
 }

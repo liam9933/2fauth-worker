@@ -117,6 +117,12 @@ jobs:
           echo "$SECRETS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Mask Sensitive Domain
+        run: |
+          if [ -n "${{ secrets.CLOUDFLARE_WORKER_SUBDOMAIN }}" ]; then 
+            echo "::add-mask::${{ secrets.CLOUDFLARE_WORKER_SUBDOMAIN }}"
+          fi
+
       # 部署到 Cloudflare Workers
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3

@@ -63,10 +63,11 @@ export async function batchInsertVaultItems(
 
     // 2. 批量写入：使用 D1 的 batch 功能避免连接超时。
     // 分批写入，每批最多 50 条。
+    // 使用 onConflictDoNothing() 作为兜底，遇到重复 (service, account) 时静默跳过而非抛出 500
     const CHUNK_SIZE = 50;
     for (let i = 0; i < preparedItems.length; i += CHUNK_SIZE) {
         const chunk = preparedItems.slice(i, i + CHUNK_SIZE);
-        const stmts = chunk.map(item => dbClient.insert(schema.vault).values(item));
+        const stmts = chunk.map(item => dbClient.insert(schema.vault).values(item).onConflictDoNothing());
         await dbClient.batch(stmts as any);
     }
 
