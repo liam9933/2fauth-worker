@@ -1,7 +1,9 @@
 <template>
   <div class="vault-list-wrapper" style="min-height: 400px;">
     <div class="vault-content">
-      <div class="toolbar" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+      <!-- 移动端偏移 45px (Header2), PC端偏移 61px (Header1) -->
+      <el-affix :offset="layoutStore.isMobile ? 45 : 61" @change="(val) => isToolbarFixed = val">
+        <div class="toolbar" :class="{ 'is-affixed': isToolbarFixed }" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
         <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
           <el-input 
             v-model="searchQuery" 
@@ -27,6 +29,7 @@
           <el-button v-else @click="selectAllLoaded" plain>{{ $t('common.select_all_loaded') }}</el-button>
         </div>
       </div>
+      </el-affix>
 
       <!-- 1. 加载状态 -->
       <div v-if="(isInitializing || isLoading || isFetching) && vault.length === 0" class="loading-state" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 400px; color: var(--el-text-color-secondary);">
@@ -226,6 +229,7 @@ const {
 
 // mount 到 handleUnlocked 完成前保持 true，确保本地缓存读取期间显示 loading 动画
 const isInitializing = ref(true)
+const isToolbarFixed = ref(false)
 
 // --- 解锁回调：离线优先，秒开首屏 ---
 const handleUnlocked = async () => {
@@ -247,4 +251,50 @@ defineExpose({ fetchVault })
 
 onMounted(handleUnlocked)
 </script>
+
+<style scoped>
+/* 搜索栏吸顶过渡动画 */
+.toolbar {
+  transition: padding 0.3s ease, background-color 0.3s ease;
+  box-sizing: border-box;
+}
+
+/* 共有吸顶属性 */
+.toolbar.is-affixed {
+  z-index: 2000;
+  margin-bottom: 0 !important;
+}
+
+/* 移动端吸顶效果：全屏、背景、边框 */
+@media (max-width: 767px) {
+  .toolbar.is-affixed {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    background-color: var(--glass-card-bg, rgba(255, 255, 255, 0.95));
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--el-border-color-light);
+    padding: 10px 20px !important;
+    border-radius: 0 !important;
+  }
+}
+
+/* PC 端吸顶效果：保持原有宽度，无背景色和下边框 */
+@media (min-width: 768px) {
+  .toolbar.is-affixed {
+    background-color: var(--el-bg-color-page) !important;
+    border-bottom: none !important;
+    padding: 10px 0px 20px 0px !important;
+  }
+}
+
+/* 适配暗黑模式 (仅移动端需要背景) */
+@media (max-width: 767px) {
+  html.dark .toolbar.is-affixed {
+    background-color: rgba(30, 30, 30, 0.85);
+    border-bottom: 1px solid var(--el-border-color-dark);
+  }
+}
+</style>
 
