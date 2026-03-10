@@ -60,7 +60,6 @@ yarn-error.log*
 # Act (local GitHub Actions) configuration and state
 .actrc
 .event
-SECURITY.md
 # Test related
 .test/
 tests/

@@ -23,7 +23,6 @@ data/
 .agents/
 .act/
 .actrc
-.security.md
 
 # Environment & Secrets
 .secrets

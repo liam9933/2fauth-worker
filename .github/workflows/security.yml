@@ -16,331 +16,136 @@ jobs:
       contents: write
       security-events: write
       actions: read
-
+    env:
+      SECURITY_SNYK_TOKEN: ${{ secrets.SECURITY_SNYK_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 1. 检查代码中的敏感信息 (Gitleaks)
-      - name: Secret Detection
-        id: gitleaks
-        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
-        continue-on-error: true
-
-      # 2. 检查依赖包漏洞 (Snyk)
-      - name: Dependency Scan
-        id: snyk
-        continue-on-error: true
-        run: |
-          npm install -g snyk          
-          echo "Installing backend dependencies..."
-          cd backend && npm install --package-lock-only && cd ..
-          echo "Installing frontend dependencies..."
-          cd frontend && npm install --package-lock-only && cd ..
-          snyk auth ${{ secrets.SNYK_TOKEN }}
-          # 🚀 UX优化：同时输出人类可读的 TXT 日志与供程序解析的 JSON 数据文件
-          snyk test --all-projects --json-file-output=snyk_result.json > snyk_result.txt || true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
-      # 3. 静态代码安全分析 (CodeQL)
       - name: Initialize CodeQL
         if: env.ACT != 'true'
+        continue-on-error: true
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript, actions
+          build-mode: none
           queries: security-extended,security-and-quality
-
-      - name: Autobuild
-        if: env.ACT != 'true'
-        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         if: env.ACT != 'true'
+        continue-on-error: true
         uses: github/codeql-action/analyze@v4
         with:
           upload: true
           output: sarif-results
 
-      # 4. 生成 README.md 报告 (🚀 UX 深度优化版)
-      - name: Generate Security Report
+      - name: Secret Detection
+        id: gitleaks
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          format: sarif
+          report_path: results.sarif
+
+      - name: Install Project Dependencies
+        if: env.SECURITY_SNYK_TOKEN != ''
+        env:
+          SECURITY_PACKAGE: ${{ vars.SECURITY_PACKAGE || '' }}
         run: |
-          REPORT_FILE="README.md"
-          
-          CODEQL_SARIFS=$(find sarif-results -name "*.sarif" 2>/dev/null)
-          REAL_CSV=$(find . -name "code-scanning-files-extracted.csv" | head -n 1)
-          
-          if [ -n "$REAL_CSV" ]; then
-            # Fallback csv 模式
-            WF_FILES=$(grep ",GitHub Actions," "$REAL_CSV" | grep "\.github/workflows/" | sort -u | wc -l)
-            JS_FILES=$(grep ",JavaScript," "$REAL_CSV" | sort -u | wc -l)
-            TS_FILES=$(grep ",TypeScript," "$REAL_CSV" | sort -u | wc -l)
-            
-            gen_csv_table() {
-              echo "| 文件路径 | 状态 |"
-              echo "| :--- | :--- |"
-              if [ "$1" == "GitHub Actions" ]; then
-                grep ",$1," "$REAL_CSV" | grep "\.github/workflows/" | awk -F',' '{print "| `"$3"` | ✅ 已审计 |"}' | sort -u
+          echo "Preparing dependency lock files for security scanning..."
+          if [ -z "$SECURITY_PACKAGE" ]; then
+            echo "SECURITY_PACKAGE is empty, installing in root..."
+            npm install --package-lock-only
+          else
+            echo "SECURITY_PACKAGE is set to: $SECURITY_PACKAGE"
+            # Split by comma and install
+            IFS=',' read -ra PACKAGES <<< "$SECURITY_PACKAGE"
+            for pkg in "${PACKAGES[@]}"; do
+              if [ -d "$pkg" ]; then
+                echo "Installing in "$pkg"..."
+                npm install --prefix "$pkg" --package-lock-only
               else
-                grep ",$1," "$REAL_CSV" | awk -F',' '{print "| `"$3"` | ✅ 已审计 |"}' | sort -u
+                echo "Warning: Directory $pkg not found, skipping."
               fi
-            }
-            WF_TABLE=$(gen_csv_table "GitHub Actions")
-            JS_TABLE=$(gen_csv_table "JavaScript")
-            TS_TABLE=$(gen_csv_table "TypeScript")
-            
-          elif [ -n "$CODEQL_SARIFS" ]; then
-            WF_FILES=$(jq -s '[.[].runs[].artifacts[]? | select(.location.uri | startswith(".github/workflows/") and test("\\.ya?ml$"))] | unique_by(.location.uri) | length' $CODEQL_SARIFS || echo "0")
-            JS_FILES=$(jq -s '[.[].runs[].artifacts[]? | select(.location.uri | endswith(".js"))] | unique_by(.location.uri) | length' $CODEQL_SARIFS || echo "0")
-            TS_FILES=$(jq -s '[.[].runs[].artifacts[]? | select(.location.uri | endswith(".ts"))] | unique_by(.location.uri) | length' $CODEQL_SARIFS || echo "0")
-            
-            gen_sarif_table() {
-              echo "| 文件路径 | 状态 |"
-              echo "| :--- | :--- |"
-              if [ "$1" == "workflow" ]; then
-                jq -s -r '.[].runs[].artifacts[]? | select(.location.uri | startswith(".github/workflows/") and test("\\.ya?ml$")) | .location.uri' $CODEQL_SARIFS | sort -u | awk '{print "| `"$1"` | ✅ 已审计 |"}'
-              elif [ "$1" == "js" ]; then
-                jq -s -r '.[].runs[].artifacts[]? | select(.location.uri | endswith(".js")) | .location.uri' $CODEQL_SARIFS | sort -u | awk '{print "| `"$1"` | ✅ 已审计 |"}'
-              elif [ "$1" == "ts" ]; then
-                jq -s -r '.[].runs[].artifacts[]? | select(.location.uri | endswith(".ts")) | .location.uri' $CODEQL_SARIFS | sort -u | awk '{print "| `"$1"` | ✅ 已审计 |"}'
-              fi
-            }
-            WF_TABLE=$(gen_sarif_table "workflow")
-            JS_TABLE=$(gen_sarif_table "js")
-            TS_TABLE=$(gen_sarif_table "ts")
+            done
+          fi
+
+      - name: Dependency Scan
+        id: snyk
+        if: env.SECURITY_SNYK_TOKEN != ''
+        continue-on-error: true
+        run: |
+          npm install -g snyk          
+          snyk auth ${{ secrets.SECURITY_SNYK_TOKEN }}
+          snyk test --all-projects --json-file-output=snyk_result.json > snyk_result.txt || true
+        env:
+          SECURITY_SNYK_TOKEN: ${{ secrets.SECURITY_SNYK_TOKEN }}
+
+      - name: Check for Dockerfile
+        id: check_docker
+        run: |
+          if [ -f "Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
           else
-            WF_FILES="0"; JS_FILES="0"; TS_FILES="0"
-            WF_TABLE="| No files found | - |"
-            JS_TABLE="| No files found | - |"
-            TS_TABLE="| No files found | - |"
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-          AUDIT_TIME=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      - name: Container Security Scan (Trivy)
+        if: steps.check_docker.outputs.exists == 'true'
+        continue-on-error: true
+        run: |
+          VERSION="0.56.1"
+          echo "Installing Trivy $VERSION..."
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin "v$VERSION"
+          trivy config . --format json --output trivy_result.json --severity CRITICAL,HIGH || true
 
-          BADGE_PASS="![Pass](https://img.shields.io/badge/Status-PASS-success?style=for-the-badge)"
-          BADGE_WARN="![Warning](https://img.shields.io/badge/Status-NOTICE-orange?style=for-the-badge)"
-          BADGE_FAIL="![Fail](https://img.shields.io/badge/Status-FAIL-red?style=for-the-badge)"
+      - name: Generate Security Report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Gitleaks typically produces results.sarif if configured or by default in some versions
+          # We'll ensure it exists for our reporter
+          node .github/scripts/security.js
           
-          # 提取 Gitleaks 结果
-          GITLEAKS_RES="PASS"
-          [ "${{ steps.gitleaks.outcome }}" != "success" ] && GITLEAKS_RES="FAIL"
-          
-          # 🚀 UX优化：解析 Snyk JSON 计算实际漏洞数量
-          SNYK_VULNS_COUNT=0
-          if [ -f "snyk_result.json" ]; then
-            SNYK_VULNS_COUNT=$(jq 'if type=="array" then [.[].vulnerabilities[]?] | length else (.vulnerabilities // []) | length end' snyk_result.json || echo "0")
-          fi
-          
-          SNYK_RES="PASS"
-          [ "$SNYK_VULNS_COUNT" -gt 0 ] && SNYK_RES="WARN"
-          [ "$SNYK_VULNS_COUNT" -eq 0 ] && grep -i -q "vulnerabilities found" snyk_result.txt && SNYK_RES="WARN"
+          # Also append to step summary for immediate visibility in GHA UI
+          cat README.md >> $GITHUB_STEP_SUMMARY
+          echo -e "\n---\n" >> $GITHUB_STEP_SUMMARY
+          cat README_CN.md >> $GITHUB_STEP_SUMMARY
 
-          OVERALL_GRADE="![Grade A+](https://img.shields.io/badge/Security_Grade-A%2B-success?style=for-the-badge)"
-          if [ "$GITLEAKS_RES" == "FAIL" ]; then
-            OVERALL_GRADE="![Grade D](https://img.shields.io/badge/Security_Grade-D-red?style=for-the-badge)"
-          elif [ "$SNYK_RES" == "WARN" ]; then
-            OVERALL_GRADE="![Grade B](https://img.shields.io/badge/Security_Grade-B-orange?style=for-the-badge)"
-          fi
+      - name: Upload Gitleaks Results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+          category: gitleaks
 
-          {
-            echo "# 🛡️ 安全审计与透明度报告"
-            echo ""
-            echo " $OVERALL_GRADE"
-            echo ""
-            echo "> [!NOTE]"
-            echo "> 本报告由 **GitHub Actions** 自动生成。为了确保数据主权的绝对透明，我们将所有核心模块的安全扫描结果实时公开。"
-            echo ""
-            echo "| 📅 审计时间 | 📝 运行编号 | 🛠️ 环境 |"
-            echo "| :--- | :--- | :--- |"
-            echo "| \`$AUDIT_TIME\` | [#${{ github.run_id }}]($RUN_URL) | \`GitHub CI/CD\` |"
-            echo ""
-            echo "---"
-            echo ""
-            echo "## 📉 实时安全看板"
-            echo ""
-            echo "| 项目 | 状态 | 风险等级 |"
-            echo "| :--- | :--- | :--- |"
-            echo "| **敏感泄露检查 (Gitleaks)** | $([ "$GITLEAKS_RES" == "PASS" ] && echo "$BADGE_PASS" || echo "$BADGE_FAIL") | \`NONE\` |"
-            echo "| **依赖项漏洞扫描 (Snyk)** | $([ "$SNYK_RES" == "PASS" ] && echo "$BADGE_PASS" || echo "$BADGE_WARN") | \`LOW/MED\` |"
-            echo "| **静态代码分析 (CodeQL)** | $BADGE_PASS | \`SAFE\` |"
-            echo ""
-            echo "---"
-            echo ""
-            echo "## 🔍 扫描覆盖范围"
-            echo ""
-            echo "| 模块 | 已审计文件数 | 提取状态 |"
-            echo "| :--- | :---: | :---: |"
-            echo "| **GitHub Actions** | \`$WF_FILES\` | ✨ **100%** |"
-            echo "| **JavaScript** | \`$JS_FILES\` | ✨ **100%** |"
-            echo "| **TypeScript** | \`$TS_FILES\` | ✨ **100%** |"
-            echo ""
-            echo "---"
-            echo ""
-            echo "## 🔍 详细发现"
-            echo ""
-            
-            # 🚀 UX优化：全新的 Snyk 漏洞表格化展示
-            echo "### 📦 依赖安全性"
-            echo "<details open>"
-            echo "<summary><b>点击查看依赖漏洞详情</b></summary>"
-            echo ""
-            
-            if [ "$SNYK_VULNS_COUNT" -gt 0 ]; then
-              echo "> ⚠️ 共发现 **$SNYK_VULNS_COUNT** 个第三方依赖漏洞。"
-              echo ""
-              echo "| 依赖包 | 严重程度 | 漏洞描述 | 修复方案 |"
-              echo "| :--- | :---: | :--- | :--- |"
-              
-              jq -r '
-                def levelIcon: if . == "critical" then "🔴" elif . == "high" then "🟠" elif . == "medium" then "🟡" else "🔵" end;
-                (if type=="array" then .[] else . end) | .vulnerabilities[]? | 
-                "| `\(.packageName)@\(.version)` | \(levelIcon) \(.severity) | [\(.title)](\(.url)) | \(.fixedIn // ["无 / N/A"] | join(", ") | if . == "无 / N/A" then . else "Upgrade to `\(.)`" end) |"
-              ' snyk_result.json | sort -u >> $REPORT_FILE
-              
-            elif [ "$SNYK_RES" == "WARN" ]; then
-              # Fallback 显示 txt 结果
-              echo "\`\`\`text"
-              grep -E -i "Tested|found|severity|Vulnerabilit|Upgrade|Path|Issue" snyk_result.txt || echo "Please check snyk_result.txt for details."
-              echo "\`\`\`"
-            else
-              echo "> ✅ **SAFE**: 未发现第三方依赖包包含已知安全漏洞。"
-            fi
-            
-            echo "</details>"
-            echo ""
-            
-            echo "### 🔑 凭证泄露检查"
-            echo "该项探测代码历史记录中是否存在硬编码的 API Key、密码或其他敏感令牌。"
-            echo "<details open>"
-            echo "<summary><b>扫描结论</b></summary>"
-            echo ""
-            echo "> ✅ **SAFE**: 未发现代码中包含硬编码的敏感凭证。"
-            echo ""
-            echo "---"
-            echo "🔍 *审计范围：全量代码变更与 Git 历史 (Gitleaks Full Scan)*"
-            echo "</details>"
-            echo ""
-            echo "### 📂 审计文件列表"
-            echo "<details>"
-            echo "<summary><b>GitHub Actions ($WF_FILES 份流水线文件)</b></summary>"
-            echo ""
-            echo "$WF_TABLE"
-            echo ""
-            echo "</details>"
-            echo ""
-            echo "<details>"
-            echo "<summary><b>JavaScript ($JS_FILES 个前端文件)</b></summary>"
-            echo ""
-            echo "$JS_TABLE"
-            echo ""
-            echo "</details>"
-            echo ""
-            echo "<details>"
-            echo "<summary><b>TypeScript ($TS_FILES 个后端文件)</b></summary>"
-            echo ""
-            echo "$TS_TABLE"
-            echo ""
-            echo "</details>"
-            echo ""
-            echo "### 🔍 CodeQL静态代码安全分析细节"
-            echo "<details open>"
-            echo "<summary><b>点击查看发现的代码问题</b></summary>"
-            echo ""
-          } > $REPORT_FILE
-            
-          if [ -n "$CODEQL_SARIFS" ]; then
-            ALERTS_COUNT=$(jq -s '[.[].runs[].results[]?] | length' $CODEQL_SARIFS)
-            ERRORS=$(jq -s '[.[].runs[].results[]? | select((.level // "warning") == "error")] | length' $CODEQL_SARIFS)
-            WARNINGS=$(jq -s '[.[].runs[].results[]? | select((.level // "warning") == "warning")] | length' $CODEQL_SARIFS)
-            NOTES=$(jq -s '[.[].runs[].results[]? | select((.level // "warning") == "note")] | length' $CODEQL_SARIFS)
-            RULES_COUNT=$(jq -s '[.[].runs[].tool.driver.rules[]?, .[].runs[].tool.extensions[].rules[]?] | unique_by(.id) | length' $CODEQL_SARIFS)
-            
-            {
-              echo "#### 审计摘要"
-              echo "- **检查规则总数**: \`$RULES_COUNT\` 项"
-              echo "- **发现的问题总数**: \`$ALERTS_COUNT\` 处"
-              echo "- 🔴 高危 (Error): \`$ERRORS\` | 🟠 中危 (Warning): \`$WARNINGS\` | 🔵 建议 (Note): \`$NOTES\` "
-              echo ""
-              echo "| 规则 ID | 严重程度 | 触发位置 | 问题描述 |"
-              echo "| :--- | :---: | :--- | :--- |"
-            } >> $REPORT_FILE
-            
-            if [ "$ALERTS_COUNT" -gt 0 ]; then
-              jq -s -r '
-                def lang: .ruleId | split("/")[0] | if . == "js" then "javascript" elif . == "ts" then "typescript" else . end;
-                def levelIcon: (.level // "warning") | if . == "error" then "🔴" elif . == "warning" then "🟠" else "🔵" end;
-                .[].runs[].results[]? | 
-                "| [\(.ruleId)](https://codeql.github.com/codeql-query-help/\(lang)/\(.ruleId | gsub("/";"-"))/) | \(levelIcon) \(.level // "warning") | `\(.locations[0].physicalLocation.artifactLocation.uri // "Project-level"):\(.locations[0].physicalLocation.region.startLine // "-")` | \(.message.text // "No description") |"
-              ' $CODEQL_SARIFS >> $REPORT_FILE
-            else
-              echo "| - | ✅ 完美 | - | 未检测到任何代码安全与质量问题 |" >> $REPORT_FILE
-            fi
-          else
-            echo "> ⚠️ CodeQL SARIF report not found." >> $REPORT_FILE
-          fi
-          
-          {
-            echo "</details>"
-            echo ""
-            echo "---"
-            echo ""
-            echo "## ⚠️ 行动指引 | Steps to Take"
-            echo ""
-            echo "如果您看到状态显示为 **FAIL** 或发现严重代码问题："
-            echo "1. **开发者**：请立即通过上方表格的 **触发位置** 定位到具体文件和行号。"
-            echo "2. **修复**：参考静态分析细节中的官方文档链接了解漏洞详情并提交修复。"
-            echo "3. **追溯**：完整的 \`.sarif\` 原始数据已附在本分支，可下载后导入本地 IDE 插件进行分析。"
-            echo ""
-            echo "---"
-            echo "💡 *Powered by Gitleaks, Snyk & CodeQL. Transparency is our commitment.*"
-          } >> $REPORT_FILE
-          
-          cat $REPORT_FILE >> $GITHUB_STEP_SUMMARY
-
-      # 5. 将报告、重命名的 SARIF 文件及 Snyk 结果推送到孤儿分支
       - name: Push to Audit Branch
         if: github.event_name != 'pull_request'
         run: |
           mkdir audit_temp
-          
           cp README.md audit_temp/
+          cp README_CN.md audit_temp/
+          [ -f "snyk_result.txt" ] && cp snyk_result.txt audit_temp/
+          [ -f "snyk_result.json" ] && cp snyk_result.json audit_temp/
           
-          if [ -f "snyk_result.txt" ]; then
-            cp snyk_result.txt audit_temp/
+          # Collect all SARIF files with descriptive names
+          [ -f "results.sarif" ] && cp results.sarif audit_temp/Gitleaks_results.sarif
+          if [ -d "sarif-results" ]; then
+            for f in sarif-results/*.sarif; do
+              [ -f "$f" ] && cp "$f" "audit_temp/CodeQL_$(basename "$f")"
+            done
           fi
-          
-          # 🚀 UX优化：同步保存 Snyk JSON 文件到审计分支
-          if [ -f "snyk_result.json" ]; then
-            cp snyk_result.json audit_temp/
-          fi
-          
-          GITLEAKS_FILE=$(find . -name "results.sarif" | head -n 1)
-          if [ -n "$GITLEAKS_FILE" ]; then
-            cp "$GITLEAKS_FILE" audit_temp/Gitleaks_results.sarif
-          fi
-          
-          for f in sarif-results/*.sarif; do
-            if [ -f "$f" ]; then
-              fname=$(basename "$f")
-              cp "$f" "audit_temp/CodeQL_${fname}"
-            fi
-          done
           
           cd audit_temp
           git init
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          
           git checkout --orphan security-audit
           
-          git add README
-          [ -f "snyk_result.txt" ] && git add snyk_result.txt
-          [ -f "snyk_result.json" ] && git add snyk_result.json
-          ls *.sarif >/dev/null 2>&1 && git add *.sarif
-          
-          git commit -m "chore: archive security report, snyk logs and sarif data [skip ci]"
-          
+          git add .
+          git commit -m "chore: archive security report and raw data [skip ci]"
           git remote add origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git push -f origin security-audit
