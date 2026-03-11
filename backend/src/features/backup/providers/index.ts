@@ -2,3 +2,4 @@ export * from '@/features/backup/providers/backupProvider';
 export * from '@/features/backup/providers/webDavProvider';
 export * from '@/features/backup/providers/s3Provider';
 export * from '@/features/backup/providers/telegramProvider';
+export * from '@/features/backup/providers/googleDriveProvider';

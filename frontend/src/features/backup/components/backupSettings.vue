@@ -66,9 +66,10 @@
       <el-form :model="form" label-position="top" ref="formRef">
         <el-form-item :label="$t('backup.type_label')">
           <el-select v-model="form.type" :disabled="isEditing">
-            <el-option :label="$t('backup.type_s3')" value="s3" />
-            <el-option label="Telegram" value="telegram" />
-            <el-option label="WebDAV" value="webdav" />
+            <el-option v-if="availableTypes.includes('s3')" :label="$t('backup.type_s3')" value="s3" />
+            <el-option v-if="availableTypes.includes('telegram')" label="Telegram" value="telegram" />
+            <el-option v-if="availableTypes.includes('webdav')" label="WebDAV" value="webdav" />
+            <el-option v-if="availableTypes.includes('gdrive')" label="Google Drive" value="gdrive" />
           </el-select>
         </el-form-item>
         <el-form-item :label="$t('backup.name_label')">
@@ -140,6 +141,67 @@
           </el-form-item>
         </template>
 
+        <!-- Google Drive 配置 -->
+        <template v-if="form.type === 'gdrive'">
+          <!-- 1. 授权引导/状态区域 (仅在表单中没有 Token 或 正在授权 或 授权成功但未保存时显示) -->
+          <div v-if="!form.config.refreshToken" class="p-10 mb-20 text-center bg-fill rounded-8 border-1 border-dashed min-h-120 flex flex-center flex-column">
+             <!-- 初始/加载状态 -->
+             <template v-if="!authStatus">
+               <p class="mb-15 text-secondary text-13">{{ $t('backup.gdrive_auth_tip') }}</p>
+               <button 
+                 type="button" 
+                 class="btn-oauth-auth btn-google-auth pointer" 
+                 :class="{ 'is-loading': isAuthenticatingGoogle }"
+                 :disabled="isAuthenticatingGoogle"
+                 @click="startGoogleAuth"
+               >
+                 <el-icon v-if="isAuthenticatingGoogle" class="is-loading"><Loading /></el-icon>
+                 <component v-else :is="iconGoogle" width="20" height="20" />
+                 <span>{{ isAuthenticatingGoogle ? '正在等待授权...' : $t('backup.auth_with_google') }}</span>
+               </button>
+             </template>
+
+             <!-- 授权失败反馈 -->
+             <template v-else-if="authStatus === 'error'">
+                <div class="text-danger flex flex-items-center flex-column py-10">
+                  <el-icon size="42"><CircleClose /></el-icon>
+                  <p class="mt-15 font-bold">{{ authErrorMessage }}</p>
+                  <el-button type="primary" link class="mt-10" @click="startGoogleAuth">点击重试</el-button>
+                </div>
+             </template>
+          </div>
+
+          <!-- 2. 已授权标识 (仅在新增模式下授权成功后显示) -->
+          <el-form-item v-if="!isEditing && authStatus === 'success'" class="animate-fade-in">
+            <div class="backup-status-box is-success">
+              <div class="backup-status-content">
+                <el-icon class="status-icon"><CircleCheck /></el-icon>
+                <span class="status-text">{{ $t('backup.authorized_success') }}</span>
+              </div>
+              <el-button type="primary" link @click="startGoogleAuth">{{ $t('backup.re_authorize') }}</el-button>
+            </div>
+          </el-form-item>
+
+          <!-- 3. 配置项区域 (有 Token 时才显示) -->
+          <div v-if="form.config.refreshToken">
+            <el-form-item :label="$t('backup.save_dir')">
+              <el-input v-model="form.config.saveDir" :placeholder="$t('backup.save_dir_placeholder')" />
+              <div class="backup-form-tip">{{ $t('backup.gdrive_folder_tip') }}</div>
+            </el-form-item>
+
+            <!-- 令牌管理 (仅在编辑模式显示，且用户通常无需操作，仅提供重新授权) -->
+            <el-form-item v-if="isEditing" :label="$t('backup.gdrive_refresh_token')">
+              <div class="backup-status-box">
+                <div class="backup-status-content">
+                  <el-icon class="status-icon" color="var(--el-text-color-secondary)"><CircleCheck /></el-icon>
+                  <span class="status-text text-secondary">{{ $t('backup.gdrive_token_active') }}</span>
+                </div>
+                <el-button type="primary" link @click="startGoogleAuth">{{ $t('backup.re_authorize') }}</el-button>
+              </div>
+            </el-form-item>
+          </div>
+        </template>
+
         <el-divider content-position="left">{{ $t('backup.auto_backup_config') }}</el-divider>
         <el-form-item :label="$t('backup.auto_backup')">
           <el-switch v-model="form.autoBackup" :active-text="$t('backup.switch_on')" :inactive-text="$t('backup.switch_off')" />
@@ -155,8 +217,11 @@
             <el-input v-model="form.autoBackupPassword" type="password" show-password :placeholder="$t('backup.input_encrypt_pwd')" />
             <div class="backup-form-tip"><span class="text-danger">*</span> {{ $t('backup.password_length_req') }}</div>
           </div>
-          <div v-else class="backup-success-tip">
-            <el-icon><CircleCheck /></el-icon><span>{{ $t('backup.continue_use_old_pwd') }}</span>
+          <div v-else class="backup-status-box is-success mb-10">
+            <div class="backup-status-content">
+               <el-icon class="status-icon"><CircleCheck /></el-icon>
+               <span class="status-text">{{ $t('backup.continue_use_old_pwd') }}</span>
+            </div>
           </div>
         </el-form-item>
         <el-form-item :label="$t('backup.retain_count_label')" v-if="form.autoBackup">
@@ -220,7 +285,9 @@
 </template>
 
 <script setup>
-import { Plus, Edit, Delete, CircleCheck, Timer, Loading } from '@element-plus/icons-vue'
+import { onMounted, onUnmounted } from 'vue'
+import { Plus, Edit, Delete, CircleCheck, CircleClose, Timer, Loading } from '@element-plus/icons-vue'
+import iconGoogle from '@/shared/components/icons/iconGoogle.vue'
 import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useBackupProviders } from '@/features/backup/composables/useBackupProviders'
 import { useBackupActions } from '@/features/backup/composables/useBackupActions'
@@ -229,10 +296,12 @@ const emit = defineEmits(['restore-success'])
 const layoutStore = useLayoutStore()
 
 const {
-  providers, isLoading, showConfigDialog, isEditing, isTesting, isSaving, 
-  isEditingWebdavPwd, isEditingS3Secret, isEditingTelegramToken, form,
+  providers, isLoading, showConfigDialog, isEditing, isTesting, isSaving,
+  isEditingWebdavPwd, isEditingS3Secret, isEditingTelegramToken, isEditingGoogleDrive, form,
   hasExistingAutoPwd, configUseExistingAutoPwd, fetchProviders, openAddDialog,
-  editProvider, testConnection, saveProvider, deleteProvider
+  editProvider, testConnection, saveProvider, deleteProvider,
+  startGoogleAuth, handleAuthMessage, isAuthenticatingGoogle, authStatus, authErrorMessage,
+  setupAuthListener, availableTypes
 } = useBackupProviders()
 
 const {
@@ -242,7 +311,28 @@ const {
   selectRestoreFile, handleRestore
 } = useBackupActions(emit, fetchProviders)
 
-const getProviderTypeTag = (type) => type === 'webdav' ? 'primary' : (type === 's3' ? 'warning' : (type === 'telegram' ? 'success' : 'info'))
+let cleanupAuthListener = null
+
+onMounted(() => {
+  cleanupAuthListener = setupAuthListener((e) => {
+    const data = e instanceof MessageEvent ? e.data : e
+    console.log('[BackupSettings] Received auth signal:', data?.type)
+  })
+})
+
+onUnmounted(() => {
+  if (cleanupAuthListener) cleanupAuthListener()
+})
+
+const getProviderTypeTag = (type) => {
+  const map = {
+    webdav: 'primary',
+    s3: 'warning',
+    telegram: 'success',
+    gdrive: 'danger'
+  }
+  return map[type] || 'info'
+}
 
 const formatSize = (bytes) => {
   if (!bytes) return '0 B'

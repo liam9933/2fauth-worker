@@ -98,10 +98,6 @@ main {
     scrollbar-gutter: stable;
 }
 
-.is-loading {
-    margin-bottom: 20px;
-}
-
 .el-icon.is-loading {
     color: var(--el-color-primary) !important;
 }

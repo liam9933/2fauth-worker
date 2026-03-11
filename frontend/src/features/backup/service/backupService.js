@@ -175,5 +175,17 @@ export const backupService = {
         } catch (e) {
             throw new backupError('Failed to delete backup file', 'FILE_DELETE_FAILED', e)
         }
+    },
+
+    /**
+     * 获取 Google Drive 授权地址
+     * @returns {Promise<{success: boolean, authUrl: string}>}
+     */
+    async getGoogleAuthUrl() {
+        try {
+            return await request('/api/backups/oauth/google/auth', { method: 'POST' })
+        } catch (e) {
+            throw new backupError('Failed to get Google Auth URL', 'AUTH_URL_FETCH_FAILED', e)
+        }
     }
 }

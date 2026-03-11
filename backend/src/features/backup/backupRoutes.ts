@@ -2,15 +2,189 @@ import { Hono } from 'hono';
 import { EnvBindings } from '@/app/config';
 import { authMiddleware } from '@/shared/middleware/auth';
 import { BackupService } from '@/features/backup/backupService';
+import { verifySecureJWT } from '@/shared/utils/crypto';
+import { getCookie, setCookie } from 'hono/cookie';
+import { AppError } from '@/app/config';
 
 const backups = new Hono<{ Bindings: EnvBindings, Variables: { user: any } }>();
+
+// --- Google Drive OAuth Callback ---
+backups.get('/oauth/google/callback', async (c) => {
+    // Explicitly allow opener access across origins for OAuth window communication
+    c.header('Cross-Origin-Opener-Policy', 'unsafe-none');
+
+    // 1. Verify State (Anti-CSRF for OAuth)
+    const stateInQuery = c.req.query('state');
+    const stateInCookie = getCookie(c, 'gdrive_oauth_state');
+
+    if (!stateInQuery || !stateInCookie || stateInQuery !== stateInCookie) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'Security Warning: State mismatch.' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    // 2. Verify Session (Cookie JWT)
+    const token = getCookie(c, 'auth_token');
+    if (!token) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'Session expired' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const payload = await verifySecureJWT(token, c.env.JWT_SECRET);
+    if (!payload?.userInfo) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'Invalid session' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    // 3. Exchange Code
+    const code = c.req.query('code');
+    const error = c.req.query('error');
+    if (error === 'access_denied') {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'User denied access' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+    if (!code) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'Auth code missing' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const clientId = c.env.OAUTH_GOOGLE_CLIENT_ID;
+    const clientSecret = c.env.OAUTH_GOOGLE_CLIENT_SECRET;
+    const redirectUri = c.env.OAUTH_GOOGLE_BACKUP_REDIRECT_URI || `${new URL(c.req.url).origin}/api/backups/oauth/google/callback`;
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: clientId || '',
+            client_secret: clientSecret || '',
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri
+        })
+    });
+
+    if (!tokenRes.ok) {
+        const errData = await tokenRes.json() as any;
+        console.error('[OAuth] Token exchange failed:', errData);
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'Token exchange failed: ${errData.error_description || errData.error}' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const tokenData = await tokenRes.json() as any;
+    const refreshToken = tokenData.refresh_token;
+
+    if (!refreshToken) {
+        // Google only sends refresh_token on the first consent or if prompt=consent is used
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'GDRIVE_AUTH_ERROR', message: 'No refresh token received. Please check app permissions.' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('gdrive_oauth_channel'); bc.postMessage(msg); bc.close(); } catch(e) {}
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    // 4. Send Refresh Token back to frontend and close
+    return c.html(`
+        <html>
+        <head><title>Success</title></head>
+        <body style="font-family:sans-serif; text-align:center; padding-top:50px; color:#555;">
+            <div id="status">授权成功，正在返回应用...</div>
+            <script>
+                (function() {
+                    const message = { 
+                        type: 'GDRIVE_AUTH_SUCCESS', 
+                        refreshToken: ${JSON.stringify(refreshToken)}
+                    };
+                    
+                    function transmit() {
+                        const success = !!window.opener;
+                        
+                        // 1. 尝试 postMessage (传统方式)
+                        if (window.opener) {
+                            window.opener.postMessage(message, '*');
+                        }
+
+                        // 2. 尝试 BroadcastChannel (现代且更可靠的方式，不依赖 opener)
+                        try {
+                            const bc = new BroadcastChannel('gdrive_oauth_channel');
+                            bc.postMessage(message);
+                            bc.close();
+                            return true; // 只要 BC 发送成功，就视为成功
+                        } catch (e) {
+                            console.error('BC failed:', e);
+                        }
+                        
+                        return success;
+                    }
+
+                    // 尝试多次发送，防止竞态
+                    transmit();
+                    setTimeout(transmit, 100);
+                    setTimeout(transmit, 400);
+
+                    // 维持窗口一秒钟，确保主页面有足够时间处理
+                    setTimeout(() => {
+                        transmit();
+                        window.close();
+                    }, 800);
+                })();
+            </script>
+        </body>
+        </html>
+    `);
+});
 
 backups.use('*', authMiddleware);
 
 backups.get('/providers', async (c) => {
     const service = new BackupService(c.env);
     const providers = await service.getProvidersList();
-    return c.json({ success: true, providers });
+
+    // Check which providers are enabled via environment variables
+    const availableTypes = ['s3', 'telegram', 'webdav'];
+    if (c.env.OAUTH_GOOGLE_CLIENT_ID && c.env.OAUTH_GOOGLE_CLIENT_SECRET) {
+        availableTypes.push('gdrive');
+    }
+
+    return c.json({ success: true, providers, availableTypes });
 });
 
 backups.post('/providers', async (c) => {
@@ -72,6 +246,43 @@ backups.post('/providers/:id/files/delete', async (c) => {
     await service.deleteFile(id, filename);
     return c.json({ success: true });
 });
+
+// --- Google Drive OAuth Initiation ---
+// NOTE: This is a POST request, so it's protected by CSRF check.
+backups.post('/oauth/google/auth', async (c) => {
+    const clientId = c.env.OAUTH_GOOGLE_CLIENT_ID;
+    const redirectUri = c.env.OAUTH_GOOGLE_BACKUP_REDIRECT_URI || `${new URL(c.req.url).origin}/api/backups/oauth/google/callback`;
+
+    if (!clientId) throw new AppError('oauth_config_incomplete', 400);
+
+    // Generate dynamic state for security
+    const state = crypto.randomUUID();
+
+    // Store state in a short-lived cookie for verification in callback
+    setCookie(c, 'gdrive_oauth_state', state, {
+        path: '/api/backups/oauth/google/callback',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Lax', // Lax is required for cross-site redirect callback
+        maxAge: 600 // 10 minutes
+    });
+
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        access_type: 'offline',
+        prompt: 'consent',
+        state: state
+    });
+
+    return c.json({
+        success: true,
+        authUrl: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+    });
+});
+
 
 export async function handleScheduledBackup(env: EnvBindings) {
     const service = new BackupService(env);

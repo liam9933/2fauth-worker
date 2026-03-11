@@ -31,6 +31,7 @@ app.use('/api/*', cors({
 
 // 1.1 安全头配置 (CSP & Security Headers)
 app.use('*', secureHeaders({
+    crossOriginOpenerPolicy: 'same-origin-allow-popups',
     contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: CSP_POLICY.SCRIPTS, // 使用 config.ts 中的配置

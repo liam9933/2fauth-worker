@@ -97,7 +97,7 @@ jobs:
       - name: Container Security Scan (Trivy)
         if: steps.check_docker.outputs.exists == 'true'
         continue-on-error: true
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561 # v0.20.0
         with:
           scan-type: config
           scan-ref: .
@@ -120,7 +120,7 @@ jobs:
           cat README_CN.md >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Gitleaks Results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: results.sarif

@@ -69,6 +69,7 @@ export type EnvBindings = {
     OAUTH_GOOGLE_CLIENT_ID?: string;
     OAUTH_GOOGLE_CLIENT_SECRET?: string;
     OAUTH_GOOGLE_REDIRECT_URI?: string;
+    OAUTH_GOOGLE_BACKUP_REDIRECT_URI?: string;
     OAUTH_TELEGRAM_BOT_NAME?: string;
     OAUTH_TELEGRAM_BOT_TOKEN?: string;
     OAUTH_ALLOWED_USERS: string;    // 允许登录的 Email 或 Username 白名单 (必填)

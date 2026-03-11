@@ -80,7 +80,7 @@ auth.post('/callback/:provider', async (c) => {
     setCookie(c, 'auth_token', token, {
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict',
+        sameSite: 'Lax',
         maxAge: 7 * 24 * 60 * 60, // 7天
         path: '/',
     });
@@ -90,7 +90,7 @@ auth.post('/callback/:provider', async (c) => {
     setCookie(c, 'csrf_token', csrfToken, {
         httpOnly: false,
         secure: true,
-        sameSite: 'Strict',
+        sameSite: 'Lax',
         maxAge: 7 * 24 * 60 * 60,
         path: '/',
     });
@@ -104,7 +104,7 @@ auth.post('/callback/:provider', async (c) => {
 
 // 退出登录
 auth.post('/logout', (c) => {
-    const cookieOpts = { path: '/', secure: true, sameSite: 'Strict' as const };
+    const cookieOpts = { path: '/', secure: true, sameSite: 'Lax' as const };
     deleteCookie(c, 'auth_token', cookieOpts);
     deleteCookie(c, 'csrf_token', cookieOpts);
 
@@ -184,12 +184,12 @@ auth.post('/webauthn/login/verify', async (c) => {
 
     // 登录成功，设置会话 Cookie (逻辑同 OAuth callback)
     setCookie(c, 'auth_token', result.token, {
-        httpOnly: true, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60, path: '/',
+        httpOnly: true, secure: true, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60, path: '/',
     });
 
     const csrfToken = crypto.randomUUID();
     setCookie(c, 'csrf_token', csrfToken, {
-        httpOnly: false, secure: true, sameSite: 'Strict', maxAge: 7 * 24 * 60 * 60, path: '/',
+        httpOnly: false, secure: true, sameSite: 'Lax', maxAge: 7 * 24 * 60 * 60, path: '/',
     });
 
     deleteCookie(c, 'webauthn_login_challenge', { path: '/' });

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { EnvBindings, AppError } from '@/app/config';
 import { BackupRepository } from '@/shared/db/repositories/backupRepository';
 import { encryptData, decryptData, encryptBackupFile } from '@/shared/utils/crypto';
-import { BackupProvider, WebDavProvider, S3Provider, TelegramProvider } from '@/features/backup/providers';
+import { BackupProvider, WebDavProvider, S3Provider, TelegramProvider, GoogleDriveProvider } from '@/features/backup/providers';
 import { decryptField } from '@/shared/db/db';
 import { vault as vaultTable, backupProviders } from '@/shared/db/schema';
 
@@ -25,6 +25,8 @@ export class BackupService {
                 return new S3Provider(config);
             case 'telegram':
                 return new TelegramProvider(config, this.db, id);
+            case 'gdrive':
+                return new GoogleDriveProvider(config, this.env);
             default:
                 throw new AppError('provider_not_found', 400);
         }
@@ -41,6 +43,9 @@ export class BackupService {
         if (type === 'telegram' && processed.botToken) {
             processed.botToken = await encryptData(processed.botToken, key);
         }
+        if (type === 'gdrive' && processed.refreshToken) {
+            processed.refreshToken = await encryptData(processed.refreshToken, key);
+        }
         return JSON.stringify(processed);
     }
 
@@ -54,6 +59,9 @@ export class BackupService {
         }
         if (type === 'telegram' && config.botToken) {
             config.botToken = await decryptData(config.botToken, key);
+        }
+        if (type === 'gdrive' && config.refreshToken) {
+            config.refreshToken = await decryptData(config.refreshToken, key);
         }
         return config;
     }
@@ -74,6 +82,9 @@ export class BackupService {
             }
             if (row.type === 'telegram' && config.botToken) {
                 config.botToken = MASK;
+            }
+            if (row.type === 'gdrive' && config.refreshToken) {
+                config.refreshToken = MASK;
             }
 
             return {
@@ -132,6 +143,9 @@ export class BackupService {
             if (type === 'telegram' && (config.botToken === MASK || !config.botToken)) {
                 config.botToken = currentConfigBase.botToken;
             }
+            if (type === 'gdrive' && (config.refreshToken === MASK || !config.refreshToken)) {
+                config.refreshToken = currentConfigBase.refreshToken;
+            }
         }
 
         const encryptedConfig = await this.processConfigForStorage(type, config, key);
@@ -176,6 +190,9 @@ export class BackupService {
                 }
                 if (type === 'telegram' && config.botToken === MASK) {
                     config.botToken = currentConfigBase.botToken;
+                }
+                if (type === 'gdrive' && config.refreshToken === MASK) {
+                    config.refreshToken = currentConfigBase.refreshToken;
                 }
             }
         }

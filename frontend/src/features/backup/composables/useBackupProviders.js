@@ -9,6 +9,7 @@ export function useBackupProviders() {
     const vaultStore = useVaultStore()
 
     const providers = ref([])
+    const availableTypes = ref(['s3', 'telegram', 'webdav']) // Default types
     const isLoading = ref(false)
 
     // Form and Dialog State
@@ -19,11 +20,15 @@ export function useBackupProviders() {
     const isEditingWebdavPwd = ref(false)
     const isEditingS3Secret = ref(false)
     const isEditingTelegramToken = ref(false)
+    const isEditingGoogleDrive = ref(false)
+    const isAuthenticatingGoogle = ref(false)
+    const authStatus = ref(null) // null, 'success', 'error'
+    const authErrorMessage = ref('')
 
     const initialFormState = () => ({
         type: 's3',
         name: '',
-        config: { url: '', username: '', password: '', saveDir: '/2fauth-worker-backup', endpoint: '', bucket: '', region: 'auto', accessKeyId: '', secretAccessKey: '', botToken: '', chatId: '' },
+        config: { url: '', username: '', password: '', saveDir: '/2fauth-worker-backup', endpoint: '', bucket: '', region: 'auto', accessKeyId: '', secretAccessKey: '', botToken: '', chatId: '', refreshToken: '', folderId: '' },
         autoBackup: false,
         autoBackupPassword: '',
         autoBackupRetain: 30
@@ -47,6 +52,9 @@ export function useBackupProviders() {
             const res = await backupService.getProviders()
             if (res.success) {
                 providers.value = res.providers
+                if (res.availableTypes) {
+                    availableTypes.value = res.availableTypes
+                }
                 await vaultStore.saveEncryptedBackupProviders(res.providers)
             }
         } finally { isLoading.value = false }
@@ -57,6 +65,7 @@ export function useBackupProviders() {
         isEditingWebdavPwd.value = false
         isEditingS3Secret.value = false
         isEditingTelegramToken.value = false
+        isEditingGoogleDrive.value = false
         form.value = initialFormState()
         hasExistingAutoPwd.value = false
         configUseExistingAutoPwd.value = false
@@ -68,6 +77,7 @@ export function useBackupProviders() {
         isEditingWebdavPwd.value = false
         isEditingS3Secret.value = false
         isEditingTelegramToken.value = false
+        isEditingGoogleDrive.value = false
         currentProviderId.value = provider.id
         form.value = JSON.parse(JSON.stringify({
             type: provider.type,
@@ -97,6 +107,8 @@ export function useBackupProviders() {
         } else if (form.value.type === 'telegram') {
             if (!c.botToken) return t('backup.require_telegram_token')
             if (!c.chatId) return t('backup.require_telegram_chat_id')
+        } else if (form.value.type === 'gdrive') {
+            if (!c.refreshToken) return t('backup.require_google_auth')
         }
 
         if (form.value.autoBackup) {
@@ -160,6 +172,78 @@ export function useBackupProviders() {
         }
     }
 
+    const startGoogleAuth = async () => {
+        isAuthenticatingGoogle.value = true
+        authStatus.value = null
+        authErrorMessage.value = ''
+        try {
+            const res = await backupService.getGoogleAuthUrl()
+            if (res.success && res.authUrl) {
+                const name = 'google_auth'
+                const specs = 'width=600,height=700,left=200,top=100'
+                const authWindow = window.open(res.authUrl, name, specs)
+
+                // 检查窗口是否被关闭
+                const timer = setInterval(() => {
+                    try {
+                        // COOP 可能导致访问 authWindow.closed 报错，这里用 try-catch 保护
+                        if (authWindow && authWindow.closed) {
+                            clearInterval(timer)
+                            // 若窗口关闭且仍未成功，重置加载状态
+                            if (isAuthenticatingGoogle.value && !authStatus.value) {
+                                isAuthenticatingGoogle.value = false
+                            }
+                        }
+                    } catch (e) {
+                        // 访问被拒绝说明窗口已经跳转到不同策略的域
+                        // 我们不需要报错，因为我们有 BroadcastChannel 兜底
+                    }
+                }, 1000)
+            } else {
+                isAuthenticatingGoogle.value = false
+            }
+        } catch (e) {
+            isAuthenticatingGoogle.value = false
+        }
+    }
+
+    const handleAuthMessage = async (event) => {
+        const data = event instanceof MessageEvent ? event.data : event
+        if (!data || !data.type) return
+
+        if (data.type === 'GDRIVE_AUTH_SUCCESS') {
+            isAuthenticatingGoogle.value = false
+            authStatus.value = 'success'
+            form.value.config.refreshToken = data.refreshToken
+            if (!form.value.config.saveDir) {
+                form.value.config.saveDir = '/2fauth-worker-backup'
+            }
+        } else if (data.type === 'GDRIVE_AUTH_ERROR') {
+            isAuthenticatingGoogle.value = false
+            authStatus.value = 'error'
+            authErrorMessage.value = data.message || t('backup.google_auth_failed')
+        }
+    }
+
+    const setupAuthListener = (onMessage) => {
+        const handleMsg = (e) => {
+            onMessage(e)
+            handleAuthMessage(e)
+        }
+
+        // 1. Listen via postMessage
+        window.addEventListener('message', handleMsg)
+
+        // 2. Listen via BroadcastChannel (More robust)
+        const bc = new BroadcastChannel('gdrive_oauth_channel')
+        bc.onmessage = handleMsg
+
+        return () => {
+            window.removeEventListener('message', handleMsg)
+            bc.close()
+        }
+    }
+
     onMounted(fetchProviders)
 
     return {
@@ -172,6 +256,10 @@ export function useBackupProviders() {
         isEditingWebdavPwd,
         isEditingS3Secret,
         isEditingTelegramToken,
+        isEditingGoogleDrive,
+        isAuthenticatingGoogle,
+        authStatus,
+        authErrorMessage,
         form,
         hasExistingAutoPwd,
         configUseExistingAutoPwd,
@@ -180,6 +268,10 @@ export function useBackupProviders() {
         editProvider,
         testConnection,
         saveProvider,
-        deleteProvider
+        deleteProvider,
+        startGoogleAuth,
+        handleAuthMessage,
+        setupAuthListener,
+        availableTypes
     }
 }
