@@ -469,6 +469,152 @@ backups.get('/oauth/baidu/callback', async (c) => {
     `);
 });
 
+// --- Dropbox OAuth Callback ---
+backups.get('/oauth/dropbox/callback', async (c) => {
+    c.header('Cross-Origin-Opener-Policy', 'unsafe-none');
+
+    const stateInQuery = c.req.query('state');
+    const stateInCookie = getCookie(c, 'dropbox_oauth_state');
+
+    if (!stateInQuery || !stateInCookie || stateInQuery !== stateInCookie) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'Security Warning: State mismatch.' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const token = getCookie(c, 'auth_token');
+    if (!token) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'Session expired' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const payload = await verifySecureJWT(token, c.env.JWT_SECRET);
+    if (!payload?.userInfo) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'Invalid session' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const code = c.req.query('code');
+    const error = c.req.query('error');
+    if (error === 'access_denied') {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'User denied access' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+    if (!code) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'Auth code missing' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const clientId = c.env.OAUTH_DROPBOX_CLIENT_ID;
+    const clientSecret = c.env.OAUTH_DROPBOX_CLIENT_SECRET;
+    const redirectUri = c.env.OAUTH_DROPBOX_BACKUP_REDIRECT_URI || `${new URL(c.req.url).origin}/api/backups/oauth/dropbox/callback`;
+
+    const tokenRes = await fetch('https://api.dropboxapi.com/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: clientId || '',
+            client_secret: clientSecret || '',
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri
+        })
+    });
+
+    if (!tokenRes.ok) {
+        const errData = await tokenRes.json() as any;
+        console.error('[OAuth] Dropbox Token exchange failed:', errData);
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'Token exchange failed: ${errData.error_description || errData.error}' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    const tokenData = await tokenRes.json() as any;
+    const refreshToken = tokenData.refresh_token;
+
+    if (!refreshToken) {
+        return c.html(`
+            <html><body><script>
+                const msg = { type: 'DROPBOX_AUTH_ERROR', message: 'No refresh token received.' };
+                if (window.opener) window.opener.postMessage(msg, '*');
+                try { const bc = new BroadcastChannel('dropbox_oauth_channel'); bc.postMessage(msg); bc.close(); } catch (e) { }
+                window.close();
+            </script></body></html>
+        `);
+    }
+
+    return c.html(`
+        <html>
+        <head><title>Success</title></head>
+        <body style="font-family:sans-serif; text-align:center; padding-top:50px; color:#555;">
+            <div id="status">授权成功，正在返回应用...</div>
+            <script>
+                (function () {
+                    const message = {
+                        type: 'DROPBOX_AUTH_SUCCESS',
+                        refreshToken: ${JSON.stringify(refreshToken)}
+                    };
+
+                    function transmit() {
+                        if (window.opener) {
+                            window.opener.postMessage(message, '*');
+                        }
+                        try {
+                            const bc = new BroadcastChannel('dropbox_oauth_channel');
+                            bc.postMessage(message);
+                            bc.close();
+                        } catch (e) { }
+                    }
+
+                    transmit();
+                    setTimeout(transmit, 100);
+                    setTimeout(transmit, 400);
+
+                    setTimeout(() => {
+                        transmit();
+                        window.close();
+                    }, 800);
+                })();
+            </script>
+        </body>
+        </html>
+    `);
+});
+
 // =========================================================================
 // === PROTECTED ROUTES ===
 // All routes below this middleware require a valid JWT AND a valid CSRF token.
@@ -489,6 +635,9 @@ backups.get('/providers', async (c) => {
     }
     if (c.env.OAUTH_BAIDU_CLIENT_ID && c.env.OAUTH_BAIDU_CLIENT_SECRET) {
         availableTypes.push('baidu');
+    }
+    if (c.env.OAUTH_DROPBOX_CLIENT_ID && c.env.OAUTH_DROPBOX_CLIENT_SECRET) {
+        availableTypes.push('dropbox');
     }
 
     return c.json({ success: true, providers, availableTypes });
@@ -651,6 +800,37 @@ backups.post('/oauth/baidu/auth', async (c) => {
     return c.json({
         success: true,
         authUrl: `https://openapi.baidu.com/oauth/2.0/authorize?${params.toString()}`
+    });
+});
+
+// --- Dropbox OAuth Initiation ---
+backups.post('/oauth/dropbox/auth', async (c) => {
+    const clientId = c.env.OAUTH_DROPBOX_CLIENT_ID;
+    const redirectUri = c.env.OAUTH_DROPBOX_BACKUP_REDIRECT_URI || `${new URL(c.req.url).origin}/api/backups/oauth/dropbox/callback`;
+
+    if (!clientId) throw new AppError('oauth_config_incomplete', 400);
+
+    const state = crypto.randomUUID();
+
+    setCookie(c, 'dropbox_oauth_state', state, {
+        path: '/api/backups/oauth/dropbox/callback',
+        secure: true,
+        httpOnly: true,
+        sameSite: 'Lax',
+        maxAge: 600
+    });
+
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        token_access_type: 'offline', // Request refresh token
+        state: state
+    });
+
+    return c.json({
+        success: true,
+        authUrl: `https://www.dropbox.com/oauth2/authorize?${params.toString()}`
     });
 });
 

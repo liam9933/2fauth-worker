@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { EnvBindings, AppError } from '@/app/config';
 import { BackupRepository } from '@/shared/db/repositories/backupRepository';
 import { encryptData, decryptData, encryptBackupFile } from '@/shared/utils/crypto';
-import { BackupProvider, WebDavProvider, S3Provider, TelegramProvider, GoogleDriveProvider, OneDriveProvider, BaiduNetdiskProvider } from '@/features/backup/providers';
+import { BackupProvider, WebDavProvider, S3Provider, TelegramProvider, GoogleDriveProvider, OneDriveProvider, BaiduNetdiskProvider, DropboxProvider } from '@/features/backup/providers';
 import { decryptField } from '@/shared/db/db';
 import { vault as vaultTable, backupProviders } from '@/shared/db/schema';
 
@@ -24,7 +24,8 @@ export class BackupService {
         telegram: ['botToken'],
         gdrive: ['refreshToken'],
         onedrive: ['refreshToken'],
-        baidu: ['refreshToken']
+        baidu: ['refreshToken'],
+        dropbox: ['refreshToken']
     };
 
     private maskConfigForFrontend(type: string, config: any) {
@@ -86,6 +87,8 @@ export class BackupService {
                 return new OneDriveProvider(config, this.env);
             case 'baidu':
                 return new BaiduNetdiskProvider(config, this.env);
+            case 'dropbox':
+                return new DropboxProvider(config, this.env);
             default:
                 throw new AppError('provider_not_found', 400);
         }
@@ -111,6 +114,9 @@ export class BackupService {
         if (type === 'baidu' && processed.refreshToken) {
             processed.refreshToken = await encryptData(processed.refreshToken, key);
         }
+        if (type === 'dropbox' && processed.refreshToken) {
+            processed.refreshToken = await encryptData(processed.refreshToken, key);
+        }
         return JSON.stringify(processed);
     }
 
@@ -132,6 +138,9 @@ export class BackupService {
             config.refreshToken = await decryptData(config.refreshToken, key);
         }
         if (type === 'baidu' && config.refreshToken) {
+            config.refreshToken = await decryptData(config.refreshToken, key);
+        }
+        if (type === 'dropbox' && config.refreshToken) {
             config.refreshToken = await decryptData(config.refreshToken, key);
         }
         return config;

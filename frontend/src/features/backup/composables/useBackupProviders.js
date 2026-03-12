@@ -26,12 +26,15 @@ export function useBackupProviders() {
     const isAuthenticatingGoogle = ref(false)
     const isAuthenticatingMicrosoft = ref(false)
     const isAuthenticatingBaidu = ref(false)
+    const isAuthenticatingDropbox = ref(false)
     const authStatusGoogle = ref(null) // null, 'success', 'error'
     const authStatusMicrosoft = ref(null)
     const authStatusBaidu = ref(null)
+    const authStatusDropbox = ref(null)
     const authErrorMessageGoogle = ref('')
     const authErrorMessageMicrosoft = ref('')
     const authErrorMessageBaidu = ref('')
+    const authErrorMessageDropbox = ref('')
 
     const initialFormState = () => ({
         type: 's3',
@@ -119,6 +122,8 @@ export function useBackupProviders() {
             if (!config.refreshToken) return t('backup.require_microsoft_auth')
         } else if (form.value.type === 'baidu') {
             if (!config.refreshToken) return t('backup.require_baidu_auth')
+        } else if (form.value.type === 'dropbox') {
+            if (!config.refreshToken) return t('backup.require_dropbox_auth')
         }
 
         if (form.value.autoBackup) {
@@ -137,13 +142,15 @@ export function useBackupProviders() {
         if (error) return ElMessage.warning(error)
 
         isTesting.value = true;
-        // Reset old error states before starting a new test to ensure UI reflects current result
-        authStatusGoogle.value = null;
+        // Only reset error states, keep 'success' state if it exists
+        if (authStatusGoogle.value === 'error') authStatusGoogle.value = null;
         authErrorMessageGoogle.value = '';
-        authStatusMicrosoft.value = null;
+        if (authStatusMicrosoft.value === 'error') authStatusMicrosoft.value = null;
         authErrorMessageMicrosoft.value = '';
-        authStatusBaidu.value = null;
+        if (authStatusBaidu.value === 'error') authStatusBaidu.value = null;
         authErrorMessageBaidu.value = '';
+        if (authStatusDropbox.value === 'error') authStatusDropbox.value = null;
+        authErrorMessageDropbox.value = '';
 
         try {
             const res = await backupService.testConnection(
@@ -151,7 +158,15 @@ export function useBackupProviders() {
                 form.value.config,
                 isEditing.value ? currentProviderId.value : null
             )
-            if (res.success) ElMessage.success(t('backup.test_success'))
+            if (res.success) {
+                ElMessage.success(t('backup.test_success'))
+                // Ensure the success status is reflected in the UI for OAuth providers
+                const type = form.value.type
+                if (type === 'gdrive') authStatusGoogle.value = 'success'
+                else if (type === 'onedrive') authStatusMicrosoft.value = 'success'
+                else if (type === 'baidu') authStatusBaidu.value = 'success'
+                else if (type === 'dropbox') authStatusDropbox.value = 'success'
+            }
         } catch (e) {
             // Error is handled here natively since we silenced the global request.js interceptor for testConnection
             const rawMsg = e?.details?.message || e?.message || e?.response?.data?.message || (typeof e === 'string' ? e : t('common.error'));
@@ -175,6 +190,9 @@ export function useBackupProviders() {
                 } else if (type === 'baidu') {
                     authStatusBaidu.value = 'error';
                     authErrorMessageBaidu.value = t('backup.token_expired_or_revoked');
+                } else if (type === 'dropbox') {
+                    authStatusDropbox.value = 'error';
+                    authErrorMessageDropbox.value = t('backup.token_expired_or_revoked');
                 }
 
                 // If we are editing an existing provider, update the global store to reflect the state
@@ -313,6 +331,35 @@ export function useBackupProviders() {
         }
     }
 
+    const startDropboxAuth = async () => {
+        isAuthenticatingDropbox.value = true
+        authStatusDropbox.value = null
+        authErrorMessageDropbox.value = ''
+        try {
+            const res = await backupService.getDropboxAuthUrl()
+            if (res.success && res.authUrl) {
+                const name = 'dropbox_auth'
+                const specs = 'width=600,height=700,left=200,top=100'
+                const authWindow = window.open(res.authUrl, name, specs)
+
+                const timer = setInterval(() => {
+                    try {
+                        if (authWindow && authWindow.closed) {
+                            clearInterval(timer)
+                            if (isAuthenticatingDropbox.value && !authStatusDropbox.value) {
+                                isAuthenticatingDropbox.value = false
+                            }
+                        }
+                    } catch (e) { }
+                }, 1000)
+            } else {
+                isAuthenticatingDropbox.value = false
+            }
+        } catch (e) {
+            isAuthenticatingDropbox.value = false
+        }
+    }
+
     const handleAuthMessage = async (event) => {
         const data = event instanceof MessageEvent ? event.data : event
         if (!data || !data.type) return
@@ -350,6 +397,17 @@ export function useBackupProviders() {
             isAuthenticatingBaidu.value = false
             authStatusBaidu.value = 'error'
             authErrorMessageBaidu.value = data.message || t('backup.baidu_auth_failed')
+        } else if (data.type === 'DROPBOX_AUTH_SUCCESS') {
+            isAuthenticatingDropbox.value = false
+            authStatusDropbox.value = 'success'
+            form.value.config.refreshToken = data.refreshToken
+            if (!form.value.config.saveDir) {
+                form.value.config.saveDir = ''
+            }
+        } else if (data.type === 'DROPBOX_AUTH_ERROR') {
+            isAuthenticatingDropbox.value = false
+            authStatusDropbox.value = 'error'
+            authErrorMessageDropbox.value = data.message || t('backup.dropbox_auth_failed')
         }
     }
 
@@ -377,11 +435,15 @@ export function useBackupProviders() {
         const bcBaidu = new BroadcastChannel('baidu_oauth_channel')
         bcBaidu.onmessage = handleMsg
 
+        const bcDropbox = new BroadcastChannel('dropbox_oauth_channel')
+        bcDropbox.onmessage = handleMsg
+
         return () => {
             window.removeEventListener('message', handleMsg)
             bcGDrive.close()
             bcMs.close()
             bcBaidu.close()
+            bcDropbox.close()
         }
     }
 
@@ -400,12 +462,15 @@ export function useBackupProviders() {
         isAuthenticatingGoogle,
         isAuthenticatingMicrosoft,
         isAuthenticatingBaidu,
+        isAuthenticatingDropbox,
         authStatusGoogle,
         authStatusMicrosoft,
         authStatusBaidu,
+        authStatusDropbox,
         authErrorMessageGoogle,
         authErrorMessageMicrosoft,
         authErrorMessageBaidu,
+        authErrorMessageDropbox,
         form,
         isAutoBackupPasswordSaved,
         shouldUseExistingAutoBackupPassword,
@@ -418,6 +483,7 @@ export function useBackupProviders() {
         startGoogleAuth,
         startMicrosoftAuth,
         startBaiduAuth,
+        startDropboxAuth,
         handleAuthMessage,
         setupAuthListener,
         availableTypes

@@ -221,5 +221,17 @@ export const backupService = {
         } catch (e) {
             throw new backupError('Failed to get Baidu Auth URL', 'AUTH_URL_FETCH_FAILED', e)
         }
+    },
+
+    /**
+     * 获取 Dropbox 授权地址
+     * @returns {Promise<{success: boolean, authUrl: string}>}
+     */
+    async getDropboxAuthUrl() {
+        try {
+            return await request('/api/backups/oauth/dropbox/auth', { method: 'POST' })
+        } catch (e) {
+            throw new backupError('Failed to get Dropbox Auth URL', 'AUTH_URL_FETCH_FAILED', e)
+        }
     }
 }

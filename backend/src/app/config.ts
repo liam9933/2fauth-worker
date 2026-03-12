@@ -47,6 +47,9 @@ export const CSP_POLICY = {
         "https://graph.microsoft.com",
         "https://openapi.baidu.com",
         "https://pan.baidu.com",
+        "https://api.dropboxapi.com",
+        "https://content.dropboxapi.com",
+        "https://www.dropbox.com",
     ],
     // 框架源
     FRAMES: [
@@ -82,6 +85,9 @@ export type EnvBindings = {
     OAUTH_BAIDU_CLIENT_ID?: string;
     OAUTH_BAIDU_CLIENT_SECRET?: string;
     OAUTH_BAIDU_BACKUP_REDIRECT_URI?: string;
+    OAUTH_DROPBOX_CLIENT_ID?: string;
+    OAUTH_DROPBOX_CLIENT_SECRET?: string;
+    OAUTH_DROPBOX_BACKUP_REDIRECT_URI?: string;
     OAUTH_ALLOWED_USERS: string;    // 允许登录的 Email 或 Username 白名单 (必填)
     OAUTH_ALLOW_ALL?: string;       // 是否允许所有用户登录 (仅推荐用于测试演示环境)
     JWT_SECRET: string;

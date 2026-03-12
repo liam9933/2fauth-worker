@@ -242,3 +242,25 @@
 .dark .btn-baidu-auth:hover {
     background-color: #222850;
 }
+
+.btn-dropbox-auth {
+    background-color: #ffffff;
+    border: 1px solid #0061FF;
+    color: #0061FF;
+}
+
+.btn-dropbox-auth:hover {
+    background-color: #f0f7ff;
+    border-color: #0061FF;
+    box-shadow: 0 1px 3px 0 rgba(0, 97, 255, 0.30), 0 4px 8px 3px rgba(0, 97, 255, 0.15);
+}
+
+.dark .btn-dropbox-auth {
+    background-color: #002d75;
+    border-color: #0061FF;
+    color: #ffffff;
+}
+
+.dark .btn-dropbox-auth:hover {
+    background-color: #00368c;
+}

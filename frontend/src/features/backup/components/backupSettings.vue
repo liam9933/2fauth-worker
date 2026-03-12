@@ -80,6 +80,7 @@
             <el-option v-if="availableTypes.includes('gdrive')" :label="$t('backup.type_gdrive')" value="gdrive" />
             <el-option v-if="availableTypes.includes('onedrive')" :label="$t('backup.type_onedrive')" value="onedrive" />
             <el-option v-if="availableTypes.includes('baidu')" :label="$t('backup.type_baidu')" value="baidu" />
+            <el-option v-if="availableTypes.includes('dropbox')" :label="$t('backup.type_dropbox')" value="dropbox" />
           </el-select>
         </el-form-item>
         <el-form-item :label="$t('backup.name_label')">
@@ -327,6 +328,61 @@
               </el-form-item>
             </div>
         </template>
+        <!-- Dropbox 配置 -->
+        <template v-if="form.type === 'dropbox'">
+            <!-- 1. 授权引导/状态区域 -->
+            <div v-if="!form.config.refreshToken" class="p-10 mb-20 text-center bg-fill rounded-8 border-1 border-dashed min-h-120 flex flex-center flex-column">
+              <template v-if="!authStatusDropbox">
+                <p class="mb-15 text-secondary text-13">{{ $t('backup.dropbox_auth_tip') }}</p>
+                <button 
+                  type="button" 
+                  class="btn-oauth-auth btn-dropbox-auth pointer" 
+                  :class="{ 'is-loading': isAuthenticatingDropbox }"
+                  :disabled="isAuthenticatingDropbox"
+                  @click="startDropboxAuth"
+                >
+                  <el-icon v-if="isAuthenticatingDropbox" class="is-loading"><Loading /></el-icon>
+                  <component v-else :is="iconDropbox" width="20" height="20" />
+                  <span>{{ isAuthenticatingDropbox ? $t('backup.waiting_authorization') : $t('backup.auth_with_dropbox') }}</span>
+                </button>
+              </template>
+              <template v-else-if="authStatusDropbox === 'error'">
+                  <div class="text-danger flex flex-items-center flex-column py-10">
+                    <el-icon size="42"><CircleClose /></el-icon>
+                    <p class="mt-15 font-bold">{{ authErrorMessageDropbox }}</p>
+                    <el-button type="primary" link class="mt-10" @click="startDropboxAuth">{{ $t('backup.re_authorize') }}</el-button>
+                  </div>
+              </template>
+            </div>
+
+            <!-- 2. 已授权标识 -->
+            <el-form-item v-if="!isEditing && authStatusDropbox === 'success'" class="animate-fade-in">
+              <div class="backup-status-box is-success">
+                <div class="backup-status-content">
+                  <el-icon class="status-icon"><CircleCheck /></el-icon>
+                  <span class="status-text">{{ $t('backup.authorized_success_dropbox') }}</span>
+                </div>
+                <el-button type="primary" link @click="startDropboxAuth">{{ $t('backup.re_authorize') }}</el-button>
+              </div>
+            </el-form-item>
+
+            <!-- 3. 配置项区域 -->
+            <div v-if="form.config.refreshToken">
+              <el-form-item :label="$t('backup.save_dir')">
+                <el-input v-model="form.config.saveDir" :placeholder="$t('backup.save_dir_placeholder')" />
+                <div class="backup-form-tip">{{ $t('backup.gdrive_folder_tip') }}</div>
+              </el-form-item>
+              <el-form-item v-if="isEditing" :label="$t('backup.dropbox_refresh_token')">
+                <div class="backup-status-box">
+                  <div class="backup-status-content">
+                    <el-icon class="status-icon" color="var(--el-text-color-secondary)"><CircleCheck /></el-icon>
+                    <span class="status-text text-secondary">{{ $t('backup.dropbox_token_active') }}</span>
+                  </div>
+                  <el-button type="primary" link @click="startDropboxAuth">{{ $t('backup.re_authorize') }}</el-button>
+                </div>
+              </el-form-item>
+            </div>
+        </template>
 
         <el-divider content-position="left">{{ $t('backup.auto_backup_config') }}</el-divider>
         <el-form-item :label="$t('backup.auto_backup')">
@@ -419,6 +475,7 @@ import { Plus, Edit, Delete, CircleCheck, CircleClose, Timer, Loading } from '@e
 import iconGoogleDrive from '@/shared/components/icons/iconGoogleDrive.vue'
 import iconOnedrive from '@/shared/components/icons/iconOnedrive.vue'
 import iconBaiduNetdisk from '@/shared/components/icons/iconBaiduNetdisk.vue'
+import iconDropbox from '@/shared/components/icons/iconDropbox.vue'
 import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useBackupProviders } from '@/features/backup/composables/useBackupProviders'
 import { useBackupActions } from '@/features/backup/composables/useBackupActions'
@@ -431,10 +488,10 @@ const {
   isEditingWebdavPwd, isEditingS3Secret, isEditingTelegramToken, form,
   isAutoBackupPasswordSaved, shouldUseExistingAutoBackupPassword, fetchProviders, openAddDialog,
   editProvider, testConnection, saveProvider, deleteProvider,
-  startGoogleAuth, startMicrosoftAuth, startBaiduAuth, handleAuthMessage, 
-  isAuthenticatingGoogle, isAuthenticatingMicrosoft, isAuthenticatingBaidu,
-  authStatusGoogle, authStatusMicrosoft, authStatusBaidu, 
-  authErrorMessageGoogle, authErrorMessageMicrosoft, authErrorMessageBaidu,
+  startGoogleAuth, startMicrosoftAuth, startBaiduAuth, startDropboxAuth, handleAuthMessage, 
+  isAuthenticatingGoogle, isAuthenticatingMicrosoft, isAuthenticatingBaidu, isAuthenticatingDropbox,
+  authStatusGoogle, authStatusMicrosoft, authStatusBaidu, authStatusDropbox,
+  authErrorMessageGoogle, authErrorMessageMicrosoft, authErrorMessageBaidu, authErrorMessageDropbox,
   setupAuthListener, availableTypes
 } = useBackupProviders()
 
@@ -465,8 +522,9 @@ const getProviderTypeTag = (type) => {
     s3: 'warning',
     telegram: 'success',
     gdrive: 'danger',
-    onedrive: '',
-    baidu: 'primary'
+    onedrive: 'success',
+    baidu: 'warning',
+    dropbox: 'primary'
   }
   return map[type] || 'info'
 }
