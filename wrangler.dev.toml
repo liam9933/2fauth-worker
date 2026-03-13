@@ -15,7 +15,6 @@ not_found_handling = "single-page-application"
 [build]
 command = "npm run build --prefix ../frontend"
 
-
 [[d1_databases]]
 binding = "DB"
 database_name = "2fauth-db-dev"

@@ -62,10 +62,12 @@ Whether you're leveraging Cloudflare's free tier or deploying on your own NAS/mi
 The most hassle-free way. No server required; Cloudflare hosts it for you for free.
 
 #### 1. One-click Auto Deploy
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nap0o/2fauth-worker)
+1. Fork this repository, and give it a `Star`! ⭐
+2. Click the deploy button below <br />
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create)
 
 #### 2. Notes & Authorization
-*   During the deployment wizard, you'll need to authorize Cloudflare to read this repository (it will automatically create a private fork in your account).
+*   In the deployment wizard, you need to authorize Cloudflare to read this repository.
 
 <details>
 <summary>Click to view: Authorization Guide Diagrams</summary>  
@@ -74,7 +76,19 @@ The most hassle-free way. No server required; Cloudflare hosts it for you for fr
 <img height="400" src="https://github.com/user-attachments/assets/c1f2d5ee-2f3f-47c2-969f-00308cadff21" />
 </details>
 
-#### 3. Add the following Variables and Secrets
+#### 3. Deployment Flow
+Click in sequence: Continue with GitHub -> Select your forked repository (2fauth-worker) -> Next -> Deploy -> Continue to project -> Settings
+
+<details>
+<summary>Click to view: Detailed deployment steps diagram</summary>
+<img height="400" src="https://github.com/user-attachments/assets/6a933580-98d5-4b09-ac1f-e2aa33380807" /><br />
+<img height="400" src="https://github.com/user-attachments/assets/14e57427-0eac-4d20-8d9c-f8957803f247" /><br />
+<img height="400" src="https://github.com/user-attachments/assets/b123a063-4671-4fc2-94fc-94b7a2d71235" /><br />
+<img height="600" src="https://github.com/user-attachments/assets/c4be75c1-2732-4dfb-abaa-72384f482d4f" />
+<img height="300" src="https://github.com/user-attachments/assets/ddce1191-353c-466d-a55c-044a1fcc47b4" />
+</details>
+
+#### 4. Add the following Variables and Secrets in `Settings`
   *   `ENCRYPTION_KEY`: A random key with at least 32 characters.
   *   `JWT_SECRET`: A random JWT secret with at least 32 characters.
   *   `OAUTH_ALLOWED_USERS`: your_email@example.com

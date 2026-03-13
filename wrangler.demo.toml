@@ -14,7 +14,6 @@ command = "npm run build --prefix frontend"
 [[d1_databases]]
 binding = "DB"
 database_name = "2fauth-db-demo"
-database_id = "082530be-db1b-4346-b4f2-dbeeb6305c51"
 
 [triggers]
 crons = ["0 2 * * *"]

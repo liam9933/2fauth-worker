@@ -60,10 +60,12 @@
 这是最省心的方式，完全不需要自己的服务器，由 Cloudflare 免费为你托管。
 
 #### 1. 一键全自动部署
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/nap0o/2fauth-worker)
+1. Fork 本项目仓库，发财小手点`Star`! ⭐
+2. 点击下方部署按钮 <br />
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create)
 
-#### 2. 注意事项与授权指引
-*   在部署向导中，你需要授权 Cloudflare 读取该仓库（系统会自动在你的 GitHub 账号下创建一个私有克隆）。
+#### 2. 授权指引
+*   在部署向导中，你需要授权 Cloudflare 读取该仓库。
 
 <details>
 <summary>点击查看：授权指引示意图</summary>  
@@ -72,7 +74,19 @@
 <img height="400" src="https://github.com/user-attachments/assets/c1f2d5ee-2f3f-47c2-969f-00308cadff21" />
 </details>
 
-#### 3. 添加如下变量和机密
+#### 3. 部署流程
+依次点击：Continue with GitHub -> 选择你 Fork 后的仓库（2fauth-worker）-> 下一步 -> 部署 -> 继续处理项目 -> 设置
+
+<details>
+<summary>点击查看：详细部署步骤示意图</summary>
+<img height="400" src="https://github.com/user-attachments/assets/6a933580-98d5-4b09-ac1f-e2aa33380807" /><br />
+<img height="400" src="https://github.com/user-attachments/assets/14e57427-0eac-4d20-8d9c-f8957803f247" /><br />
+<img height="400" src="https://github.com/user-attachments/assets/b123a063-4671-4fc2-94fc-94b7a2d71235" /><br />
+<img height="600" src="https://github.com/user-attachments/assets/c4be75c1-2732-4dfb-abaa-72384f482d4f" />
+<img height="300" src="https://github.com/user-attachments/assets/ddce1191-353c-466d-a55c-044a1fcc47b4" />
+</details>
+
+#### 4. 在`设置`添加如下变量和机密
   *   `ENCRYPTION_KEY`：32位以上随机密钥。
   *   `JWT_SECRET`：32位以上随机JWT密钥。
   *   `OAUTH_ALLOWED_USERS`：你的邮箱@example.com
