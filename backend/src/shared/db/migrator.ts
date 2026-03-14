@@ -35,6 +35,20 @@ const MIGRATIONS: Migration[] = [
         version: 3,
         name: 'create_vault_category_sort_index',
         sql: `CREATE INDEX IF NOT EXISTS idx_vault_category_sort ON vault (category, sort_order);`
+    },
+    {
+        version: 4,
+        name: 'initialize_baseline_indexes',
+        sql: `
+            CREATE INDEX IF NOT EXISTS idx_vault_created_at ON vault(created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_vault_service_created_at ON vault(service, created_at DESC);
+            CREATE UNIQUE INDEX IF NOT EXISTS vault_service_account_uq ON vault(lower(service), lower(account));
+            CREATE INDEX IF NOT EXISTS idx_backup_providers_type ON backup_providers(type);
+            CREATE INDEX IF NOT EXISTS idx_backup_telegram_history_provider_id ON backup_telegram_history(provider_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_backup_email_history_provider_id ON backup_email_history(provider_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_passkeys_user_id ON auth_passkeys(user_id);
+            CREATE INDEX IF NOT EXISTS idx_rate_limits_expires ON rate_limits(expires_at);
+        `
     }
 ];
 

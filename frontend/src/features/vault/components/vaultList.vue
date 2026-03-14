@@ -436,21 +436,39 @@ const onDragEnd = () => {
 }
 
 const handleMouseDown = (e, id) => {
+    // 排除特定交互区域
     if (e.target.closest('.el-checkbox, .el-dropdown, .el-button, .more-icon')) return
-    onDragStart(e.clientX, e.clientY, id, e.currentTarget)
     
-    const onMove = (moveEv) => onDragMove(moveEv.clientX, moveEv.clientY)
+    // 基础防误触：区分“点击”与“拖拽”
+    const startX = e.clientX
+    const startY = e.clientY
+    const targetEl = e.currentTarget
+    let moved = false
+    
+    const onMove = (moveEv) => {
+        if (!moved) {
+            const dist = Math.sqrt(Math.pow(moveEv.clientX - startX, 2) + Math.pow(moveEv.clientY - startY, 2))
+            if (dist > 5) {
+                moved = true
+                onDragStart(startX, startY, id, targetEl)
+            }
+        }
+        if (moved) onDragMove(moveEv.clientX, moveEv.clientY)
+    }
+    
     const onEnd = () => {
-        onDragEnd()
+        if (moved) onDragEnd()
         window.removeEventListener('mousemove', onMove)
         window.removeEventListener('mouseup', onEnd)
     }
+    
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onEnd)
 }
 
 const handleTouchStart = (e, id) => {
-    if (e.target.closest('.el-checkbox, .el-dropdown, .el-button, .more-icon')) return
+    // 彻底排除交互区域，确保点击验证码/按钮 100% 优先
+    if (e.target.closest('.el-checkbox, .el-dropdown, .el-button, .more-icon, .code-display-area')) return
     
     const touch = e.touches[0]
     const targetEl = e.currentTarget

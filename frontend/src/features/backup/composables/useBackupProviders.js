@@ -83,12 +83,29 @@ export function useBackupProviders() {
         }
     }
 
+    // Helper to completely reset auth-related internal states
+    const resetAuthStatuses = () => {
+        authStatusGoogle.value = null
+        authStatusMicrosoft.value = null
+        authStatusBaidu.value = null
+        authStatusDropbox.value = null
+        authErrorMessageGoogle.value = ''
+        authErrorMessageMicrosoft.value = ''
+        authErrorMessageBaidu.value = ''
+        authErrorMessageDropbox.value = ''
+        isAuthenticatingGoogle.value = false
+        isAuthenticatingMicrosoft.value = false
+        isAuthenticatingBaidu.value = false
+        isAuthenticatingDropbox.value = false
+    }
+
     const openAddDialog = () => {
         isEditing.value = false
         isEditingWebdavPwd.value = false
         isEditingS3Secret.value = false
         isEditingTelegramToken.value = false
         isEditingEmailPwd.value = false
+        resetAuthStatuses()
         form.value = initialFormState()
         isAutoBackupPasswordSaved.value = false
         shouldUseExistingAutoBackupPassword.value = false
@@ -101,6 +118,7 @@ export function useBackupProviders() {
         isEditingS3Secret.value = false
         isEditingTelegramToken.value = false
         isEditingEmailPwd.value = false
+        resetAuthStatuses()
         currentProviderId.value = provider.id
         form.value = JSON.parse(JSON.stringify({
             type: provider.type,
