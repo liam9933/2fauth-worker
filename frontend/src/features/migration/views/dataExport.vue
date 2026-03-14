@@ -72,7 +72,7 @@
     </div>
 
     <!-- 加密导出密码弹窗 -->
-    <el-dialog v-model="showPasswordDialog" :title="$t('migration.export_pwd_title')" width="400px" destroy-on-close>
+    <el-dialog v-model="showPasswordDialog" :title="$t('migration.export_pwd_title')" :width="layoutStore.isMobile ? '90%' : '400px'" destroy-on-close>
       <el-form :model="exportForm" label-position="top">
         <el-form-item :label="$t('migration.export_password')">
           <el-input v-model="exportForm.password" type="password" show-password :placeholder="$t('migration.pwd_placeholder_strong')" />
@@ -88,7 +88,7 @@
     </el-dialog>
 
     <!-- 明文导出风险提示弹窗 -->
-    <el-dialog v-model="showWarningDialog" :title="$t('migration.warning_title')" width="400px" destroy-on-close>
+    <el-dialog v-model="showWarningDialog" :title="$t('migration.warning_title')" :width="layoutStore.isMobile ? '90%' : '400px'" destroy-on-close>
       <el-alert :title="$t('migration.warning_alert_title')" type="error" :closable="false" :description="$t('migration.warning_desc')" show-icon />
       <template #footer>
         <el-button @click="showWarningDialog = false">{{ $t('common.cancel') }}</el-button>
@@ -97,7 +97,7 @@
     </el-dialog>
 
     <!-- Google Auth 二维码弹窗 -->
-    <el-dialog v-model="showGaDialog" :title="$t('migration.ga_title')" width="450px" class="text-center" destroy-on-close>
+    <el-dialog v-model="showGaDialog" :title="$t('migration.ga_title')" :width="layoutStore.isMobile ? '90%' : '450px'" class="text-center" destroy-on-close>
       <div v-if="gaQrDataUrls.length > 0">
         <p class="mb-10 text-secondary">
           {{ $t('migration.ga_desc_1') }}<br/>
@@ -121,7 +121,7 @@
       </template>
     </el-dialog>
     <!-- 账号选择弹窗 (用于 Google Auth 选择性导出) -->
-    <el-dialog v-model="showAccountSelectDialog" :title="$t('migration.select_account_title')" width="450px" destroy-on-close>
+    <el-dialog v-model="showAccountSelectDialog" :title="$t('migration.select_account_title')" :width="layoutStore.isMobile ? '95%' : '500px'" destroy-on-close>
       <div class="migration-account-select-toolbar">
         <el-input 
           v-model="searchKeyword" 
@@ -174,12 +174,11 @@ import {
   Lock, Iphone, Document, Search, 
   Unlock, Tickets, Grid, Monitor 
 } from '@element-plus/icons-vue'
-import icon2FAS from '@/shared/components/icons/icon2FAS.vue'
-import iconAegis from '@/shared/components/icons/iconAegis.vue'
-import iconGoogleAuth from '@/shared/components/icons/iconGoogleAuth.vue'
-import iconBitwarden from '@/shared/components/icons/iconBitwarden.vue'
+import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useDataExport } from '@/features/migration/composables/useDataExport'
 import { i18n } from '@/locales'
+
+const layoutStore = useLayoutStore()
 
 const {
   showPasswordDialog,

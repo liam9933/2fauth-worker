@@ -106,7 +106,7 @@
     <el-dialog
       v-model="showBatchProgress"
       :title="$t('migration.batch_import_processing')"
-      width="450px"
+      :width="layoutStore.isMobile ? '90%' : '450px'"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
       :show-close="false"
@@ -127,7 +127,7 @@
     </el-dialog>
 
     <!-- 加密文件密码输入弹窗 -->
-    <el-dialog v-model="showDecryptDialog" :title="$t('migration.decrypt_backup_title')" width="400px" @close="handleDecryptDialogClose" destroy-on-close>
+    <el-dialog v-model="showDecryptDialog" :title="$t('migration.decrypt_backup_title')" :width="layoutStore.isMobile ? '90%' : '400px'" @close="handleDecryptDialogClose" destroy-on-close>
       <el-alert v-if="currentImportType === 'aegis_encrypted'" :title="$t('migration.detect_aegis')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === 'proton_encrypted'" :title="$t('migration.detect_proton')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === '2fas_encrypted'" :title="$t('migration.detect_2fas')" type="warning" :closable="false" class="mb-15" />
@@ -148,7 +148,10 @@
 
 <script setup>
 import { UploadFilled, Lock, Unlock, Document, Tickets, Grid, Warning, Folder, Iphone, QuestionFilled } from '@element-plus/icons-vue'
+import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useDataImport } from '@/features/migration/composables/useDataImport'
+
+const layoutStore = useLayoutStore()
 
 // icons for import options (follow export page style)
 import icon2FAS from '@/shared/components/icons/icon2FAS.vue'

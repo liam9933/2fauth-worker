@@ -7,8 +7,12 @@ export class DropboxProvider implements BackupProvider {
     private refreshToken: string;
     private accessToken: string | null = null;
     private saveDir: string;
+    private config: any;
+
+    public onConfigUpdate?: (newConfig: any) => Promise<void>;
 
     constructor(config: any, env: any) {
+        this.config = config;
         this.clientId = env.OAUTH_DROPBOX_CLIENT_ID;
         this.clientSecret = env.OAUTH_DROPBOX_CLIENT_SECRET;
 
@@ -44,6 +48,14 @@ export class DropboxProvider implements BackupProvider {
 
         const data = await res.json() as any;
         this.accessToken = data.access_token;
+
+        if (data.refresh_token && data.refresh_token !== this.refreshToken) {
+            this.refreshToken = data.refresh_token;
+            if (this.onConfigUpdate) {
+                await this.onConfigUpdate({ ...this.config, refreshToken: this.refreshToken });
+            }
+        }
+
         return this.accessToken!;
     }
 

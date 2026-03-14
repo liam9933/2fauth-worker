@@ -9,8 +9,12 @@ export class BaiduNetdiskProvider implements BackupProvider {
     private tokenExpiry: number = 0;
     private saveDir: string;
     private env: EnvBindings;
+    private config: any;
+
+    public onConfigUpdate?: (newConfig: any) => Promise<void>;
 
     constructor(config: any, env: EnvBindings) {
+        this.config = config;
         this.clientId = env.OAUTH_BAIDU_CLIENT_ID || '';
         this.clientSecret = env.OAUTH_BAIDU_CLIENT_SECRET || '';
         this.refreshToken = config.refreshToken;
@@ -51,8 +55,11 @@ export class BaiduNetdiskProvider implements BackupProvider {
         this.accessToken = data.access_token;
         this.tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
 
-        if (data.refresh_token) {
+        if (data.refresh_token && data.refresh_token !== this.refreshToken) {
             this.refreshToken = data.refresh_token;
+            if (this.onConfigUpdate) {
+                await this.onConfigUpdate({ ...this.config, refreshToken: this.refreshToken });
+            }
         }
 
         return this.accessToken!;

@@ -78,27 +78,59 @@ export class BackupService {
         return JSON.stringify({ ...exportPayload, data: userEncrypted, accounts: undefined });
     }
 
+    private validateSafeFilename(filename: string) {
+        // Limit filenames to expected format and characters to limit exposure and prevent path traversal
+        const safePattern = /^2fa-backup-(auto|manual|export)-[a-zA-Z0-9.-]+\.json$/;
+        if (!safePattern.test(filename) || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+            throw new AppError('invalid_filename_detected', 400);
+        }
+    }
+
     private async getProvider(type: string, config: any, id?: number): Promise<BackupProvider> {
+        let provider: BackupProvider;
         switch (type) {
             case 'webdav':
-                return new WebDavProvider(config);
+                provider = new WebDavProvider(config);
+                break;
             case 's3':
-                return new S3Provider(config);
+                provider = new S3Provider(config);
+                break;
             case 'telegram':
-                return new TelegramProvider(config, this.db, id);
+                provider = new TelegramProvider(config, this.db, id);
+                break;
             case 'gdrive':
-                return new GoogleDriveProvider(config, this.env);
+                provider = new GoogleDriveProvider(config, this.env);
+                break;
             case 'onedrive':
-                return new OneDriveProvider(config, this.env);
+                provider = new OneDriveProvider(config, this.env);
+                break;
             case 'baidu':
-                return new BaiduNetdiskProvider(config, this.env);
+                provider = new BaiduNetdiskProvider(config, this.env);
+                break;
             case 'dropbox':
-                return new DropboxProvider(config, this.env);
+                provider = new DropboxProvider(config, this.env);
+                break;
             case 'email':
-                return new EmailProvider(config, this.db, id, this.lang);
+                provider = new EmailProvider(config, this.db, id, this.lang);
+                break;
             default:
                 throw new AppError('provider_not_found', 400);
         }
+
+        // Inject persistence callback if id is provided
+        if (id && provider) {
+            const key = this.env.ENCRYPTION_KEY || this.env.JWT_SECRET;
+            provider.onConfigUpdate = async (updatedConfig: any) => {
+                const encryptedConfig = await this.processConfigForStorage(type, updatedConfig, key);
+                await this.db.update(backupProviders).set({
+                    config: encryptedConfig,
+                    updatedAt: Date.now()
+                }).where(eq(backupProviders.id, id)).run();
+                console.log(`[BackupService] Auto-updated config for provider ${id} (${type})`);
+            };
+        }
+
+        return provider;
     }
 
     private async processConfigForStorage(type: string, config: any, key: string) {
@@ -341,6 +373,7 @@ export class BackupService {
 
         const key = this.env.ENCRYPTION_KEY || this.env.JWT_SECRET;
         const config = await this.processConfigForUsage(providerRow.type, providerRow.config, key);
+        this.validateSafeFilename(filename);
         const provider = await this.getProvider(providerRow.type, config, providerRow.id);
 
         try {
@@ -364,6 +397,7 @@ export class BackupService {
 
         const key = this.env.ENCRYPTION_KEY || this.env.JWT_SECRET;
         const config = await this.processConfigForUsage(providerRow.type, providerRow.config, key);
+        this.validateSafeFilename(filename);
         const provider = await this.getProvider(providerRow.type, config, providerRow.id);
 
         try {

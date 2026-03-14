@@ -6,14 +6,18 @@ export class OneDriveProvider implements BackupProvider {
     private folderId: string | null = null;
     private saveDir: string;
     private env: EnvBindings;
+    private config: any;
     private accessToken: string | null = null;
     private tokenExpiry: number = 0;
 
     constructor(config: any, env: EnvBindings) {
+        this.config = config;
         this.refreshToken = config.refreshToken;
         this.saveDir = config.saveDir || '/2fauth-worker-backup';
         this.env = env;
     }
+
+    public onConfigUpdate?: (newConfig: any) => Promise<void>;
 
     private async getAccessToken(): Promise<string> {
         if (this.accessToken && Date.now() < this.tokenExpiry) {
@@ -58,11 +62,14 @@ export class OneDriveProvider implements BackupProvider {
         this.tokenExpiry = Date.now() + (data.expires_in * 1000 * 0.9);
 
         // 如果获取了新的 refreshToken（有时候微软会轮换）
-        if (data.refresh_token) {
+        if (data.refresh_token && data.refresh_token !== this.refreshToken) {
             this.refreshToken = data.refresh_token;
-            // 注意：当前架构设计中，此处的 refreshToken 更新是驻留内存的。
-            // 真正的持久化在 backupSettings.vue 通过用户点击"保存"完成或依靠后续服务层优化。
-            // OneDrive refresh_token 通常有效期很长。
+            if (this.onConfigUpdate) {
+                await this.onConfigUpdate({
+                    ...this.config,
+                    refreshToken: this.refreshToken
+                });
+            }
         }
 
         return this.accessToken!;

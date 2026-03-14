@@ -89,10 +89,12 @@ const envTemplate = {
 // This replaces Cloudflare's ASSETS.fetch
 const nodeAssetsFetch = async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
-    let filePath = path.join(frontendDistPath, url.pathname);
+    // Ensure we resolve the path relative to frontendDistPath and normalize it
+    let filePath = path.resolve(frontendDistPath, url.pathname.slice(1));
 
     // Security: check that the file is actually inside frontendDistPath
     if (!filePath.startsWith(frontendDistPath)) {
+        console.warn(`[Security] Blocked potential path traversal: ${url.pathname}`);
         return new Response('Forbidden', { status: 403 });
     }
 

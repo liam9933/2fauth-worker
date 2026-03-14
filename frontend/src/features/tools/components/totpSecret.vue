@@ -147,7 +147,7 @@
     </div>
     
     <!-- 二维码扫描弹窗 -->
-    <el-dialog v-model="showScanner" :title="$t('tools.totp_scan_qr_title')" width="500px" destroy-on-close append-to-body>
+    <el-dialog v-model="showScanner" :title="$t('tools.totp_scan_qr_title')" :width="layoutStore.isMobile ? '90%' : '450px'" destroy-on-close append-to-body>
       <QrScanner @scan-success="handleScanSuccess" />
     </el-dialog>
   </div>
@@ -159,7 +159,10 @@ import { CopyDocument, Refresh, Timer, Camera, CircleCheck, Download } from '@el
 import { useQueryClient } from '@tanstack/vue-query'
 import { copyToClipboard, triggerDownload } from '@/shared/utils/common'
 import { useTotpToolbox } from '@/features/tools/composables/useTotpToolbox'
+import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useTotpToolboxActions } from '@/features/tools/composables/useTotpToolboxActions'
+
+const layoutStore = useLayoutStore()
 
 const QrScanner = defineAsyncComponent(() => import('@/shared/components/qrScanner.vue'))
 const queryClient = useQueryClient()

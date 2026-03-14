@@ -88,7 +88,7 @@
         <el-dialog
           v-model="showAddDialog"
           :title="$t('security.add_dialog_title')"
-          width="400px"
+          :width="layoutStore.isMobile ? '90%' : '400px'"
           append-to-body
         >
           <el-form :model="addForm" @submit.prevent="handleAdd">
@@ -118,9 +118,12 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import { Plus, Delete, Cpu, CircleCheck, Loading, Edit, Check } from '@element-plus/icons-vue'
+import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { webAuthnService } from '@/features/auth/service/webAuthnService'
+
+const layoutStore = useLayoutStore()
 
 const { t } = useI18n()
 const loading = ref(true)

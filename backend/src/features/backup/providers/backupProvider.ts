@@ -10,4 +10,5 @@ export interface BackupProvider {
     uploadBackup(filename: string, data: string): Promise<void>;
     downloadBackup(filename: string): Promise<string>;
     deleteBackup(filename: string): Promise<void>;
+    onConfigUpdate?: (newConfig: any) => Promise<void>;
 }

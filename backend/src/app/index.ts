@@ -32,6 +32,10 @@ app.use('/api/*', cors({
 // 1.1 安全头配置 (CSP & Security Headers)
 app.use('*', secureHeaders({
     crossOriginOpenerPolicy: 'same-origin-allow-popups',
+    xContentTypeOptions: 'nosniff',
+    xFrameOptions: 'DENY',
+    xXssProtection: '1; mode=block',
+    referrerPolicy: 'strict-origin-when-cross-origin',
     contentSecurityPolicy: {
         defaultSrc: ["'self'"],
         scriptSrc: CSP_POLICY.SCRIPTS, // 使用 config.ts 中的配置
@@ -101,12 +105,22 @@ app.onError((err, c) => {
         return c.json({ success: true, backups: [] });
     }
 
-    console.error(`[Server Error] ${err.message}`);
+    const isAppError = (err as any).name === 'AppError';
+    let message = err.message || 'Internal Server Error';
+
+    // 如果是非预料中的 500 错误，隐藏详细信息以防泄露系统详情
+    if (!isAppError && statusCode >= 500) {
+        console.error(`[CRITICAL ERROR] ${err.stack || err.message}`);
+        message = 'internal_server_error';
+    } else {
+        console.error(`[Server Error] ${err.message}`);
+    }
+
     // 标准化响应
     return c.json({
         code: statusCode,
         success: false,
-        message: err.message || 'Internal Server Error',
+        message: message,
         data: null
     }, statusCode as any);
 });
