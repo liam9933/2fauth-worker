@@ -10,6 +10,7 @@
         
         <!-- 统一的拖拽上传区域 -->
         <el-upload
+          ref="uploadRef"
           class="migration-import-upload"
           drag
           action="#"
@@ -25,80 +26,86 @@
           </div>
         </el-upload>
 
-        <!-- 生态支持矩阵 (优化后的说明区) -->
+        <!-- 支持情况说明 (直接展示版) -->
         <div class="migration-ecosystem mt-30">
           <el-divider border-style="dashed">
-            <span class="text-secondary font-12">{{ $t('migration.support_desc') }}</span>
+            <span class="text-secondary font-12 flex-center gap-5">
+              <el-icon><QuestionFilled /></el-icon>
+              {{ $t('migration.support_desc') }}
+            </span>
           </el-divider>
-          
-          <div class="ecosystem-groups">
-            <!-- 组1: 本系统 -->
-            <div class="ecosystem-group">
-              <h4 class="group-title">
-                <el-icon><Folder /></el-icon>
-                {{ $t('migration.system_backup_format') }}
-              </h4>
-              <div class="ecosystem-grid">
-                <span class="ecosystem-item"><el-icon><Lock /></el-icon> {{ $t('migration.encrypted_backup_json') }}</span>
-                <span class="ecosystem-item"><el-icon><Unlock /></el-icon> {{ $t('migration.plaintext_backup_json') }}</span>
+
+          <div class="compatibility-container mt-20">
+            <div class="ecosystem-groups">
+              <!-- 组1: 本系统 -->
+              <div class="ecosystem-group-card">
+                <h4 class="group-title">
+                  <el-icon><Folder /></el-icon>
+                  {{ $t('migration.system_backup_format') }}
+                </h4>
+                <div class="ecosystem-grid">
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload">
+                    <el-icon><Lock /></el-icon> {{ $t('migration.encrypted_backup_json') }}
+                  </el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload">
+                    <el-icon><Unlock /></el-icon> {{ $t('migration.plaintext_backup_json') }}
+                  </el-button>
+                </div>
+              </div>
+
+              <!-- 组2: 移动端 App -->
+              <div class="ecosystem-group-card">
+                <h4 class="group-title">
+                  <el-icon><Iphone /></el-icon>
+                  {{ $t('migration.mobile_app_format') }}
+                </h4>
+                <div class="ecosystem-grid">
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><icon2FAS /></el-icon> 2FAS (.2fas)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconAegis /></el-icon> Aegis (.json/.txt)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwarden /></el-icon> Bitwarden (.json/.csv)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconProtonAuth /></el-icon> Proton (.json)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconEnte /></el-icon> Ente (.txt)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconGoogleAuth /></el-icon> Google Auth (.png/.jpg)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconMicrosoftAuth /></el-icon> Microsoft Auth (PhoneFactor)</el-button>
+                </div>
+              </div>
+
+              <!-- 组3: 通用格式 -->
+              <div class="ecosystem-group-card">
+                <h4 class="group-title">
+                  <el-icon><Document /></el-icon>
+                  {{ $t('migration.generic_format') }}
+                </h4>
+                <div class="ecosystem-grid">
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><Document /></el-icon> {{ $t('migration.generic_json') }}</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><Tickets /></el-icon> OTPAuth URI (.txt)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><Grid /></el-icon> {{ $t('migration.spreadsheet_csv') }}</el-button>
+                </div>
               </div>
             </div>
 
-            <!-- 组2: 移动端 App -->
-            <div class="ecosystem-group mobile-group">
-              <h4 class="group-title">
-                <el-icon><Iphone /></el-icon>
-                {{ $t('migration.mobile_app_format') }}
-              </h4>
-              <div class="ecosystem-grid">
-                <span class="ecosystem-item"><icon2FAS /> 2FAS (.2fas)</span>
-                <span class="ecosystem-item"><iconAegis /> Aegis (.json/.txt)</span>
-                <span class="ecosystem-item"><iconBitwarden /> Bitwarden (.json/.csv)</span>
-                <span class="ecosystem-item"><iconProtonAuth /> Proton (.json)</span>
-                <span class="ecosystem-item"><iconEnte /> Ente (.txt)</span>
-                <span class="ecosystem-item"><iconGoogleAuth /> Google Auth (.png/.jpg)</span>
-                <span class="ecosystem-item"><iconMicrosoftAuth /> Microsoft Auth</span>
-              </div>
-              
-              <!-- 疑难解答（优化后的折叠样式） -->
-              <el-collapse class="ecosystem-collapse">
-                <el-collapse-item name="1">
-                  <template #title>
-                    <div class="migration-guide">
-                      <strong>{{ $t('migration.ga_ms_import_guide') }}</strong>
-                    </div>
-                  </template>
-                  <div class="migration-ga-tip">
-                    <span><el-icon><iconGoogleAuth /></el-icon> Google Authenticator</span>
-                    <p>{{ $t('migration.ga_auth_desc') }}</p>
-                  </div>
-                  <div class="migration-ms-tip mt-10">
-                    <span><el-icon><iconMicrosoftAuth /></el-icon> Microsoft Authenticator</span>
-                    <p>{{ $t('migration.ms_auth_desc') }}</p>
-                    <p class="mt-5 font-11 text-secondary">{{ $t('migration.ms_auth_detail') }}:</p>
-                    <code>/data/data/com.azure.authenticator/databases/PhoneFactor</code>
-                    <code>/data/data/com.azure.authenticator/databases/PhoneFactor-wal</code>
-                    <code>/data/data/com.azure.authenticator/databases/PhoneFactor-shm</code>
-                  </div>
-                </el-collapse-item>
-              </el-collapse>
-            </div>
+            <!-- 详细引导 -->
+            <el-divider border-style="dashed" content-position="left" class="mt-30">
+              <span class="text-secondary font-12">{{ $t('migration.ga_ms_import_guide') }}</span>
+            </el-divider>
 
-            <!-- 组3: 通用格式 -->
-            <div class="ecosystem-group">
-              <h4 class="group-title">
-                <el-icon><Document /></el-icon>
-                {{ $t('migration.generic_format') }}
-              </h4>
-              <div class="ecosystem-grid">
-                <span class="ecosystem-item"><el-icon><Document /></el-icon> {{ $t('migration.generic_json') }}</span>
-                <span class="ecosystem-item"><el-icon><Tickets /></el-icon> OTPAuth URI (.txt)</span>
-                <span class="ecosystem-item"><el-icon><Grid /></el-icon> {{ $t('migration.spreadsheet_csv') }}</span>
+            <div class="guide-section">
+              <div class="migration-ga-tip">
+                <span><el-icon><iconGoogleAuth /></el-icon> Google Authenticator</span>
+                <p>{{ $t('migration.ga_auth_desc') }}</p>
+              </div>
+              <div class="migration-ms-tip">
+                <span><el-icon><iconMicrosoftAuth /></el-icon> {{ $t('migration.ms_auth_desc') }}</span>
+                <p>{{ $t('migration.ms_auth_detail') }}:</p>
+                <div class="code-block-wrapper">
+                  <code>/data/data/com.azure.authenticator/databases/PhoneFactor</code>
+                  <code>/data/data/com.azure.authenticator/databases/PhoneFactor-wal</code>
+                  <code>/data/data/com.azure.authenticator/databases/PhoneFactor-shm</code>
+                </div>
               </div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -147,11 +154,18 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { UploadFilled, Lock, Unlock, Document, Tickets, Grid, Warning, Folder, Iphone, QuestionFilled } from '@element-plus/icons-vue'
 import { useLayoutStore } from '@/shared/stores/layoutStore'
 import { useDataImport } from '@/features/migration/composables/useDataImport'
 
 const layoutStore = useLayoutStore()
+const uploadRef = ref(null)
+
+const triggerUpload = () => {
+  // Use the nested input element inside el-upload component to trigger the file picker
+  uploadRef.value?.$el.querySelector('input')?.click()
+}
 
 // icons for import options (follow export page style)
 import icon2FAS from '@/shared/components/icons/icon2FAS.vue'
@@ -180,4 +194,5 @@ const {
 } = useDataImport(emit)
 
 </script>
+
 

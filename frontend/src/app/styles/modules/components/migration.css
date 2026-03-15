@@ -43,13 +43,35 @@
 }
 
 .migration-button-with-icon {
-    display: inline-flex;
+    cursor: pointer !important;
+    border-radius: 6px !important;
+    padding: 6px 14px !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+    border-color: var(--el-border-color-lighter) !important;
+    font-size: 13px !important;
+    transition: all 0.2s ease-in-out !important;
+    display: inline-flex !important;
     align-items: center;
+    justify-content: center;
+    gap: 8px !important;
 }
 
-.migration-button-with-icon .el-icon {
-    margin-right: 6px;
+.migration-button-with-icon:hover {
+    border-color: var(--el-color-primary) !important;
+    color: var(--el-color-primary) !important;
+    background-color: var(--el-color-primary-light-9) !important;
+    transform: translateY(-1px);
+}
+
+.migration-button-with-icon:active {
+    transform: translateY(0);
+}
+
+.migration-button-with-icon .el-icon,
+.migration-button-with-icon svg {
     font-size: 16px;
+    margin-right: 2px !important;
 }
 
 /* 账号选择列表样式 */
@@ -125,157 +147,90 @@
     margin-bottom: 20px;
 }
 
-/* 生态支持矩阵 (Ecosystem Grid) */
+/* 生态支持矩阵 (Ecosystem Grid) - DataImport.vue */
 .migration-ecosystem {
-    margin-top: 30px;
-    text-align: left;
+    margin-top: 40px;
 }
 
-.ecosystem-title {
-    font-size: 16px;
-    color: var(--el-text-color-primary);
-    margin: 20px 0;
-    font-weight: 600;
+.compatibility-container {
+    padding: 0;
 }
 
 .ecosystem-groups {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: 20px;
 }
 
-.ecosystem-group {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-    background-color: none;
+.ecosystem-group-card {
+    background: var(--el-bg-color-overlay);
     border: 1px solid var(--el-border-color-lighter);
     border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.ecosystem-group:hover {
-    border-color: var(--el-border-color);
-    box-shadow: var(--el-box-shadow-lighter);
+    padding: 20px;
 }
 
 .group-title {
-    margin: 0;
-    font-size: 15px;
-    color: var(--el-text-color-primary);
-    font-weight: 700;
+    margin: 0 0 15px 0;
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 15px;
+    color: var(--el-text-color-primary);
+    font-weight: 700;
 }
 
 .ecosystem-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
-}
-
-.ecosystem-item {
-    display: inline-flex;
-    align-items: center;
     gap: 8px;
-    font-size: 13px;
-    color: var(--el-text-color-regular);
-    line-height: 1.2;
-    padding: 6px 12px;
-    background: var(--el-fill-color-lighter);
-    border-radius: 20px;
-    border: 1px solid transparent;
-    transition: all 0.2s ease;
 }
 
-.ecosystem-item:hover {
-    color: var(--el-color-primary);
-    background: var(--el-color-primary-light-9);
-    border-color: var(--el-color-primary-light-8);
-    transform: translateY(-1px);
-}
-
-.ecosystem-item .el-icon,
-.ecosystem-item svg {
-    font-size: 16px;
-    opacity: 0.85;
-}
-
-/* 疑难解答折叠面板 */
-/* 疑难解答折叠面板 */
-.ecosystem-collapse {
-    border: none;
-    background-color: transparent;
-}
-
-.ecosystem-collapse,
-.ecosystem-collapse .el-collapse-item,
-.ecosystem-collapse .el-collapse-item__header,
-.ecosystem-collapse .el-collapse-item__wrap {
-    border: none !important;
-}
-
-.ecosystem-collapse .el-collapse-item__header {
-    background-color: transparent;
-    padding: 0;
-    font-size: 13px;
-    color: var(--el-text-color-regular);
-    height: 32px;
-    line-height: 32px;
-}
-
-.ecosystem-collapse .el-collapse-item__wrap {
-    background-color: transparent;
-}
-
-.ecosystem-collapse .el-collapse-item__content {
-    padding: 0;
+/* 详细引导 (Tip Sections) */
+.guide-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .migration-ga-tip,
 .migration-ms-tip {
-    padding: 12px 16px;
-    border-radius: 8px;
-    border: 1px solid transparent;
-    margin-top: 10px;
+    padding: 12px 18px;
+    border-radius: 10px;
 }
 
 .migration-ga-tip {
     background-color: var(--el-color-primary-light-9);
-    border-color: var(--el-color-primary-light-8);
+    color: var(--el-color-primary);
 }
 
 .migration-ms-tip {
     background-color: var(--el-color-success-light-9);
-    border-color: var(--el-color-success-light-8);
+    color: var(--el-color-success);
 }
 
 .migration-ga-tip span,
 .migration-ms-tip span {
     font-weight: 700;
-    font-size: 13px;
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 6px;
 }
 
-.migration-ga-tip span {
-    color: var(--el-color-primary);
-}
-
-.migration-ms-tip span {
-    color: var(--el-color-success);
+.ms-path-label {
+    margin-top: 8px;
+    font-size: 11px;
+    opacity: 0.8;
+    font-weight: 600;
 }
 
 .migration-ga-tip p,
 .migration-ms-tip p {
     margin: 0;
     font-size: 12px;
-    color: var(--el-text-color-regular);
     line-height: 1.6;
+    opacity: 0.9;
+    color: inherit;
 }
 
 .migration-ms-tip code {
@@ -291,29 +246,14 @@
     border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-/* 深色模式优化 */
-html.dark .migration-ga-tip {
-    background-color: rgba(64, 158, 255, 0.1);
-    border-color: rgba(64, 158, 255, 0.2);
-}
-
-html.dark .migration-ms-tip {
-    background-color: rgba(103, 194, 58, 0.1);
-    border-color: rgba(103, 194, 58, 0.2);
-}
-
 html.dark .migration-ms-tip code {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.1);
     color: var(--el-text-color-secondary);
 }
 
-html.dark .ecosystem-item {
-    background: var(--el-fill-color-light);
-}
-
-html.dark .ecosystem-item:hover {
-    background: rgba(64, 158, 255, 0.15);
+.el-divider__text {
+    background-color: var(--el-bg-color) !important;
 }
 
 /* dataMigration.vue */

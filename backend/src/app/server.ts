@@ -64,16 +64,19 @@ sqlite.pragma('journal_mode = WAL');
 // 4. Initialize Drizzle ORM
 const db = drizzle(sqlite, { schema });
 
-// 5. Run migrations/schema creation
-const checkTable = sqlite.prepare("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='vault'").get() as any;
-if (checkTable['count(*)'] === 0) {
-    console.log('[Database] Empty database detected. Initializing with baseline schema...');
-    const schemaFile = fs.existsSync(path.join(baseDir, 'schema.sql'))
-        ? path.join(baseDir, 'schema.sql')
-        : path.join(baseDir, 'backend/schema.sql');
+// 5. Run baseline schema initialization (ensures all tables exist)
+const schemaFile = fs.existsSync(path.join(baseDir, 'schema.sql'))
+    ? path.join(baseDir, 'schema.sql')
+    : path.join(baseDir, 'backend/schema.sql');
+
+if (fs.existsSync(schemaFile)) {
     const schemaSql = fs.readFileSync(schemaFile, 'utf-8');
-    sqlite.exec(schemaSql);
-    console.log('[Database] Baseline schema initialized.');
+    try {
+        // execute baseline schema (contains CREATE TABLE IF NOT EXISTS)
+        sqlite.exec(schemaSql);
+    } catch (e: any) {
+        console.warn('[Database] Baseline sync warning:', e.message);
+    }
 }
 
 // 6. Apply sequence migrations (Elegant way)
