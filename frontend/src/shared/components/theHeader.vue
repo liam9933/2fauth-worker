@@ -1,21 +1,14 @@
 <template>
   <header class="header">
     <div class="logo">
-      <el-button v-if="layoutStore.isMobile && route.meta.requiresAuth" @click="layoutStore.showMobileMenu = true" class="header-menu-btn">
-        <el-icon :size="14" class="menu-icon" style="color: var(--el-text-color-primary);">
-          <svg viewBox="0 0 16 16" version="1.1" width="100%" height="100%" aria-hidden="true" fill="currentColor">
-            <path d="M1 2.75A.75.75 0 0 1 1.75 2h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 2.75Zm0 5A.75.75 0 0 1 1.75 7h12.5a.75.75 0 0 1 0 1.5H1.75A.75.75 0 0 1 1 7.75ZM1.75 12h12.5a.75.75 0 0 1 0 1.5H1.75a.75.75 0 0 1 0-1.5Z"></path>
-          </svg>
-        </el-icon>
-      </el-button>
       <a href="#" @click.prevent="goHome" class="header-home-link">
         <el-icon :size="24" color="#409EFC" style="margin-right: 10px;"><Lock /></el-icon>
         <h2>2FAuth Worker</h2>
       </a>
     </div>
     <div class="user-actions">
-      <!-- 访客页面（登录/报错）始终显示的通用操作 -->
-      <div class="guest-actions" v-if="!route.meta.requiresAuth">
+      <!-- 访客页面（仅在显式处于非授权页面如登录页时显示） -->
+      <div class="guest-actions" v-if="route.meta.requiresAuth === false">
         <el-button circle :icon="themeStore.isDark ? Sunny : Moon" @click="themeStore.toggleTheme" class="header-action-btn" />
         <el-button circle :icon="iconLocales" :title="$i18n.locale === 'zh-CN' ? 'English' : '切换语言'" @click="toggleLanguage" class="header-action-btn" />
       </div>
@@ -31,6 +24,20 @@
         </el-avatar>
         <span class="username">{{ authUserStore.userInfo?.username || '2FAuth' }}</span>
       </div>
+
+      <!-- 移动端菜单按钮 (现在放在右侧) -->
+      <el-button 
+        v-if="layoutStore.isMobile && route.meta.requiresAuth" 
+        @click="layoutStore.showMobileMenu = true" 
+        link
+        class="header-menu-btn-refined"
+      >
+        <el-icon :size="20">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </el-icon>
+      </el-button>
     </div>
   </header>
 </template>

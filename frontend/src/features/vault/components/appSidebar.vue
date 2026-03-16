@@ -59,7 +59,7 @@
   <!-- 抽屉菜单 (Mobile) -->
   <el-drawer
     v-model="layoutStore.showMobileMenu"
-    direction="ltr"
+    direction="rtl"
     size="280px"
     :with-header="false"
     :lock-scroll="false"
@@ -127,12 +127,16 @@
         </el-menu-item>
       </el-menu>
 
-      <div class="sidebar-footer" style="display: flex; gap: 15px; justify-content: center; padding: 20px 0;">
-        <el-button circle size="default" :icon="themeStore.isDark ? Sunny : Moon" @click="themeStore.toggleTheme" />
-        <el-button circle size="default" :icon="iconLocales" :title="$i18n.locale === 'zh-CN' ? 'English' : '切换语言'" @click="toggleLanguage" />
-        <el-button circle size="default" @click="handleLogout" :title="$t('menu.logout')">
-          <el-icon><SwitchButton /></el-icon>
-        </el-button>
+      <div class="sidebar-footer mobile-footer" style="padding: 24px 20px;">
+        <div style="display: flex; gap: 20px; justify-content: space-between; width: 100%;">
+          <div style="display: flex; gap: 15px;">
+            <el-button circle size="default" :icon="themeStore.isDark ? Sunny : Moon" @click="themeStore.toggleTheme" />
+            <el-button circle size="default" :icon="iconLocales" :title="$i18n.locale === 'zh-CN' ? 'English' : '切换语言'" @click="toggleLanguage" />
+          </div>
+          <el-button circle size="default" @click="handleLogout" :title="$t('menu.logout')" class="logout-btn">
+            <el-icon><SwitchButton /></el-icon>
+          </el-button>
+        </div>
       </div>
     </div>
   </el-drawer>

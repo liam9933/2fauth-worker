@@ -84,11 +84,23 @@
 }
 
 /* --- TheHeader Button & Link --- */
-.header-menu-btn {
-    margin-right: 10px;
-    padding: 5px 8px !important;
-    border: 1px solid var(--el-border-color) !important;
+.header-menu-btn-refined {
+    padding: 8px !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--el-text-color-primary) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 8px !important;
     height: auto !important;
+}
+
+.header-menu-btn-refined:hover {
+    background: var(--el-fill-color-light) !important;
+}
+
+.header-menu-btn-refined:active {
+    transform: scale(0.9) rotate(-5deg);
+    background: var(--el-fill-color) !important;
 }
 
 .header-home-link {
