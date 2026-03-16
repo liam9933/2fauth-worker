@@ -110,12 +110,12 @@ import Icon2FAS from '@/shared/components/icons/icon2FAS.vue'
 import IconAegis from '@/shared/components/icons/iconAegis.vue'
 import IconEnte from '@/shared/components/icons/iconEnte.vue'
 import IconProtonAuth from '@/shared/components/icons/iconProtonAuth.vue'
-import IconBitwarden from '@/shared/components/icons/iconBitwarden.vue'
+import IconBitwardenAuth from '@/shared/components/icons/iconBitwardenAuth.vue'
 import IconMicrosoftAuth from '@/shared/components/icons/iconMicrosoftAuth.vue'
 import IconGoogleAuth from '@/shared/components/icons/iconGoogleAuth.vue'
 import IconFreeOTP from '@/shared/components/icons/iconFreeOTP.vue'
 import IconAuthy from '@/shared/components/icons/iconAuthy.vue'
-import IconLastPass from '@/shared/components/icons/iconLastPass.vue'
+import iconLastPassAuth from '@/shared/components/icons/iconLastPassAuth.vue'
 import IconRaivo from '@/shared/components/icons/iconRaivo.vue'
 
 const appList = [
@@ -123,12 +123,12 @@ const appList = [
   { id: 'ente', name: 'Ente Auth', rating: 4.8, icon: IconEnte, link: 'https://ente.io/auth/', recommended: true, securityIssue: false, downloads: { ios: 'https://apps.apple.com/app/ente-authenticator/id6444101188', android: 'https://play.google.com/store/apps/details?id=io.ente.auth', fdroid: 'https://f-droid.org/packages/io.ente.auth', github: 'https://github.com/ente-io/ente/releases', desktop: 'https://ente.io/download/auth/desktop' } },
   { id: 'aegis', name: 'Aegis Authenticator', rating: 4.8, icon: IconAegis, link: 'https://getaegis.app/', recommended: true, securityIssue: false, downloads: { android: 'https://play.google.com/store/apps/details?id=com.beemdevelopment.aegis', fdroid: 'https://f-droid.org/packages/com.beemdevelopment.aegis/', github: 'https://github.com/beemdevelopment/Aegis/releases' } },
   { id: 'proton', name: 'Proton Authenticator', rating: 4.5, icon: IconProtonAuth, link: 'https://proton.me/pass', recommended: false, securityIssue: false, downloads: { ios: 'https://apps.apple.com/us/app/proton-pass-password-manager/id6443490729', android: 'https://play.google.com/store/apps/details?id=me.proton.android.pass', extension: 'https://chrome.google.com/webstore/detail/proton-pass-free-password/ghmbeldphafepmbegfdlkmapnddhbheg' } },
-  { id: 'bitwarden', name: 'Bitwarden Authenticator', rating: 4.2, icon: IconBitwarden, link: 'https://bitwarden.com/products/authenticator/', recommended: false, securityIssue: false, downloads: { ios: 'https://apps.apple.com/us/app/bitwarden-authenticator/id6475654992', android: 'https://play.google.com/store/apps/details?id=com.bitwarden.authenticator', github: 'https://github.com/bitwarden/authenticator/releases' } },
+  { id: 'bitwarden', name: 'Bitwarden Authenticator', rating: 4.2, icon: IconBitwardenAuth, link: 'https://bitwarden.com/products/authenticator/', recommended: false, securityIssue: false, downloads: { ios: 'https://apps.apple.com/us/app/bitwarden-authenticator/id6475654992', android: 'https://play.google.com/store/apps/details?id=com.bitwarden.authenticator', github: 'https://github.com/bitwarden/authenticator/releases' } },
   { id: 'google', name: 'Google Authenticator', rating: 4.0, icon: IconGoogleAuth, link: 'https://safety.google/authentication/', recommended: false, securityIssue: false, downloads: { ios: 'https://apps.apple.com/us/app/google-authenticator/id388497605', android: 'https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2' } },
   { id: 'freeotp', name: 'FreeOTP', rating: 3.0, icon: IconFreeOTP, link: 'https://freeotp.github.io/', recommended: false, securityIssue: false, downloads: { ios: 'https://apps.apple.com/us/app/freeotp-authenticator/id872559395', android: 'https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp', fdroid: 'https://f-droid.org/en/packages/org.fedorahosted.freeotp/' } },
   { id: 'microsoft', name: 'Microsoft Authenticator', rating: 2.0, icon: IconMicrosoftAuth, link: 'https://www.microsoft.com/en-us/security/mobile-authenticator-app', recommended: false, securityIssue: true, downloads: { ios: 'https://apps.apple.com/us/app/microsoft-authenticator/id983156458', android: 'https://play.google.com/store/apps/details?id=com.azure.authenticator' } },
   { id: 'authy', name: 'Authy', rating: 1.5, icon: IconAuthy, link: 'https://authy.com/', recommended: false, securityIssue: true, downloads: { ios: 'https://apps.apple.com/us/app/twilio-authy/id494168017', android: 'https://play.google.com/store/apps/details?id=com.authy.authy' } },
-  { id: 'lastpass', name: 'LastPass Auth', rating: 1.5, icon: IconLastPass, link: 'https://www.lastpass.com/auth', recommended: false, securityIssue: true, downloads: { ios: 'https://apps.apple.com/us/app/lastpass-authenticator/id1079110004', android: 'https://play.google.com/store/apps/details?id=com.lastpass.authenticator' } },
+  { id: 'lastpass', name: 'LastPass Auth', rating: 1.5, icon: iconLastPassAuth, link: 'https://www.lastpass.com/auth', recommended: false, securityIssue: true, downloads: { ios: 'https://apps.apple.com/us/app/lastpass-authenticator/id1079110004', android: 'https://play.google.com/store/apps/details?id=com.lastpass.authenticator' } },
   { id: 'raivo', name: 'Raivo OTP', rating: 1.0, icon: IconRaivo, link: 'https://raivo-otp.com/', recommended: false, securityIssue: true, downloads: { ios: 'https://apps.apple.com/us/app/raivo-otp/id1459042137' } }
 ]
 </script>

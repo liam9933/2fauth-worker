@@ -35,7 +35,7 @@ export const dataMigrationService = {
      * 智能识别导入内容或文件的类型
      * @param {string|ArrayBuffer|Uint8Array} content - 文件文本内容或二进制数据
      * @param {string} filename - 文件名
-     * @returns {'bitwarden_vault_csv'|'bitwarden_auth_csv'|'generic_csv'|'generic_text'|'bitwarden_vault_json'|'bitwarden_auth_json'|'bitwarden_vault_encrypted'|'2fauth_encrypted'|'2fauth_json'|'2fas'|'2fas_encrypted'|'aegis'|'aegis_encrypted'|'phonefactor'|'1password_pux'|'lastpass_auth_json'|'unknown'} 返回类型标识
+     * @returns {'bitwarden_pass_csv'|'bitwarden_auth_csv'|'generic_csv'|'generic_text'|'bitwarden_pass_json'|'bitwarden_auth_json'|'bitwarden_pass_encrypted'|'2fauth_encrypted'|'2fauth_json'|'2fas'|'2fas_encrypted'|'aegis'|'aegis_encrypted'|'phonefactor'|'1password_pux'|'lastpass_auth_json'|'unknown'} 返回类型标识
      */
     detectFileType(content, filename) {
         // 如果是二进制数据，尝试用更宽容的方式判断 PhoneFactor
@@ -74,7 +74,7 @@ export const dataMigrationService = {
 
         if (filename && filename.toLowerCase().endsWith('.csv')) {
             const firstLine = typeof textContent === 'string' ? textContent.split('\n')[0].toLowerCase() : ''
-            if (firstLine.includes('login_totp')) return 'bitwarden_vault_csv'
+            if (firstLine.includes('login_totp')) return 'bitwarden_pass_csv'
             if (firstLine.includes('title') && firstLine.includes('otpauth')) return '1password_csv'
             if (firstLine.includes('otpauth')) return 'bitwarden_auth_csv'
             if (firstLine.includes('totp') && firstLine.includes('vault') && firstLine.includes('createtime')) return 'proton_pass_csv'
@@ -89,8 +89,8 @@ export const dataMigrationService = {
         if (typeof textContent === 'string') {
             const json = tryParseJSON(textContent)
             if (json) {
-                // 如果包含 folders 字段，通常是 Bitwarden Vault (密码管理器)
-                if (Array.isArray(json.items) && Array.isArray(json.folders)) return 'bitwarden_vault_json'
+                // 如果包含 folders 字段，通常是 Bitwarden Pass (密码管理器)
+                if (Array.isArray(json.items) && Array.isArray(json.folders)) return 'bitwarden_pass_json'
                 // 如果只包含 items 且是明文，归类为 bitwarden_auth_json (之前测试过的独立 App 路径)
                 if (Array.isArray(json.items) && (json.encrypted === false || !('encrypted' in json))) return 'bitwarden_auth_json'
                 if (json.encrypted === true && json.app === '2fauth') return '2fauth_encrypted'
@@ -105,8 +105,8 @@ export const dataMigrationService = {
                 if (json.version === 1 && typeof json.salt === 'string' && typeof json.content === 'string') return 'proton_auth_encrypted'
                 // Ente Auth 加密导出：同时包含 kdfParams 和 encryptedData 两个关键字段
                 if (json.kdfParams && typeof json.encryptedData === 'string') return 'ente_encrypted'
-                // Bitwarden password-protected export (Vault)
-                if (json.encrypted === true && json.passwordProtected === true && json.encKeyValidation_DO_NOT_EDIT) return 'bitwarden_vault_encrypted'
+                // Bitwarden Password password-protected export
+                if (json.encrypted === true && json.passwordProtected === true && json.encKeyValidation_DO_NOT_EDIT) return 'bitwarden_pass_encrypted'
             }
         }
 
@@ -249,18 +249,19 @@ export const dataMigrationService = {
             }).join('\n')
         }
 
+        if (type === 'bitwarden_auth_csv') {
+            let csv = 'name,secret,totp,favorite,folder\n'
+            vault.forEach(acc => {
+                const name = `"${acc.service}${acc.account ? ':' + acc.account : ''}"`
+                const label = encodeURIComponent(`${acc.service}:${acc.account}`)
+                const issuer = encodeURIComponent(acc.service)
+                const totp = `"otpauth://totp/${label}?secret=${acc.secret}&issuer=${issuer}&digits=${acc.digits}&period=${acc.period}"`
+                csv += `${name},${acc.secret},${totp},0,\n`
+            })
+            return csv
+        }
+
         if (type === 'generic_csv') {
-            if (variant === 'bitwarden_auth') {
-                let csv = 'name,secret,totp,favorite,folder\n'
-                vault.forEach(acc => {
-                    const name = `"${acc.service}${acc.account ? ':' + acc.account : ''}"`
-                    const label = encodeURIComponent(`${acc.service}:${acc.account}`)
-                    const issuer = encodeURIComponent(acc.service)
-                    const totp = `"otpauth://totp/${label}?secret=${acc.secret}&issuer=${issuer}&digits=${acc.digits}&period=${acc.period}"`
-                    csv += `${name},${acc.secret},${totp},0,\n`
-                })
-                return csv
-            }
             // generic csv
             let csv = 'name,issuer,secret,algorithm,digits,period,type\n'
             vault.forEach(acc => {
@@ -653,7 +654,7 @@ export const dataMigrationService = {
      * @param {Object} json 
      * @returns {Promise<Object>} 解密后的 JSON 对象
      */
-    async decryptBitwardenVaultEncrypted(password, json) {
+    async decryptBitwardenPassEncrypted(password, json) {
         try {
             const saltStr = json.salt;
             const iterations = json.kdfIterations;
@@ -666,7 +667,7 @@ export const dataMigrationService = {
             // 1. 衍生主密钥: 关键是直接使用 salt 字符串作为 UTF-8 字节输入
             const saltBytes = new TextEncoder().encode(saltStr);
             const passwordBytes = new TextEncoder().encode(password);
-            
+
             const keyMaterialHandle = await crypto.subtle.importKey(
                 'raw', passwordBytes, { name: 'PBKDF2' }, false, ['deriveBits']
             );
@@ -1146,14 +1147,14 @@ export const dataMigrationService = {
         }
 
         // 处理 Bitwarden 加密导出 (Password-protected Vault)
-        if (type === 'bitwarden_vault_encrypted') {
+        if (type === 'bitwarden_pass_encrypted') {
             if (!password) throw new migrationError('导入 Bitwarden 加密文件需要密码', 'MISSING_PASSWORD')
             try {
                 const bitwardenJson = typeof content === 'string' ? JSON.parse(content) : content
-                const decrypted = await this.decryptBitwardenVaultEncrypted(password, bitwardenJson)
-                // 解密后的格式就是普通的 bitwarden_vault_json 结构（有 items 数组）
+                const decrypted = await this.decryptBitwardenPassEncrypted(password, bitwardenJson)
+                // 解密后的格式就是普通的 bitwarden_pass_json 结构（有 items 数组）
                 content = JSON.stringify(decrypted)
-                type = 'bitwarden_vault_json'
+                type = 'bitwarden_pass_json'
                 password = undefined
             } catch (e) {
                 if (e instanceof migrationError) throw e
@@ -1225,7 +1226,7 @@ export const dataMigrationService = {
                 })
             }
         }
-        else if (type === 'bitwarden_vault_json' || type === 'bitwarden_auth_json') {
+        else if (type === 'bitwarden_pass_json' || type === 'bitwarden_auth_json') {
             const json = typeof content === 'string' ? JSON.parse(content) : content
             if (Array.isArray(json.items)) {
                 json.items.forEach(item => {
@@ -1288,7 +1289,7 @@ export const dataMigrationService = {
                 }))
             }
         }
-        else if (type === 'bitwarden_vault_csv' || type === 'bitwarden_auth_csv' || type === '1password_csv' || type === 'proton_pass_csv' || type === 'dashlane_csv' || type === 'generic_csv') rawVault = csvStrategy.parseCsv(content)
+        else if (type === 'bitwarden_pass_csv' || type === 'bitwarden_auth_csv' || type === '1password_csv' || type === 'proton_pass_csv' || type === 'dashlane_csv' || type === 'generic_csv') rawVault = csvStrategy.parseCsv(content)
 
         return rawVault.map(acc => {
             if (typeof acc.account === 'string' && acc.account.includes(':')) {
@@ -1357,15 +1358,15 @@ export const dataMigrationService = {
             const bytes = content instanceof Uint8Array ? content : new Uint8Array(content)
             const unzipped = unzipSync(bytes)
             const dataFileContent = unzipped['export.data']
-            
+
             if (!dataFileContent) throw new Error('未能在 .1pux 文件中找到 export.data')
-            
+
             const text = new TextDecoder().decode(dataFileContent)
             const data = JSON.parse(text)
-            
+
             const rawVault = []
             const accounts = data.accounts || []
-            
+
             accounts.forEach(account => {
                 const vaults = account.vaults || []
                 vaults.forEach(vault => {
@@ -1373,7 +1374,7 @@ export const dataMigrationService = {
                     items.forEach(item => {
                         const title = item.overview?.title || 'Unknown'
                         const subtitle = item.overview?.subtitle || ''
-                        
+
                         // 1PUX 的 TOTP 字段路径通常在 sections[].fields 或是 loginFields 中
                         const checkFields = (fields) => {
                             if (!Array.isArray(fields)) return
@@ -1390,7 +1391,7 @@ export const dataMigrationService = {
                                 }
                             })
                         }
-                        
+
                         checkFields(item.details?.loginFields)
                         if (Array.isArray(item.details?.sections)) {
                             item.details.sections.forEach(section => checkFields(section.fields))
@@ -1398,7 +1399,7 @@ export const dataMigrationService = {
                     })
                 })
             })
-            
+
             return rawVault
         } catch (e) {
             throw new migrationError('解析 1Password 备份失败: ' + (e.message || String(e)), 'ONEPASSWORD_PARSE_FAILED', e)

@@ -60,7 +60,7 @@
                   {{ $t('migration.password_manager_format') }}
                 </h4>
                 <div class="ecosystem-grid">
-                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwarden /></el-icon> Bitwarden Vault (.json/.csv)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwardenPass /></el-icon> Bitwarden Pass (.json/.csv)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><icon1Password /></el-icon> 1Password (.1pux/.csv)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconProtonPass /></el-icon> Proton Pass (.pgp/.csv)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconDashlanePass /></el-icon> Dashlane (.csv)</el-button>
@@ -76,7 +76,7 @@
                 <div class="ecosystem-grid">
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><icon2FAS /></el-icon> 2FAS (.2fas)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconAegis /></el-icon> Aegis (.json/.txt)</el-button>
-                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwarden /></el-icon> Bitwarden Auth (.json/.csv)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwardenAuth /></el-icon> Bitwarden Auth (.json/.csv)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconProtonAuth /></el-icon> Proton Auth(.json)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconEnte /></el-icon> Ente Auth(.txt)</el-button>
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconGoogleAuth /></el-icon> Google Auth (.png/.jpg)</el-button>
@@ -111,7 +111,7 @@
               </div>
               <div class="migration-ms-tip">
                 <span><el-icon><iconMicrosoftAuth /></el-icon> {{ $t('migration.ms_auth_desc') }}</span>
-                <p>{{ $t('migration.ms_auth_detail') }}:</p>
+                <p>{{ $t('migration.ms_auth_detail') }}</p>
                 <div class="code-block-wrapper">
                   <code>/data/data/com.azure.authenticator/databases/PhoneFactor</code>
                   <code>/data/data/com.azure.authenticator/databases/PhoneFactor-wal</code>
@@ -155,7 +155,7 @@
       <el-alert v-else-if="currentImportType === 'proton_pass_pgp'" :title="$t('migration.detect_proton_pass')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === '2fas_encrypted'" :title="$t('migration.detect_2fas')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === 'ente_encrypted'" :title="$t('migration.detect_ente')" type="warning" :closable="false" class="mb-15" />
-      <el-alert v-else-if="currentImportType === 'bitwarden_vault_encrypted'" :title="$t('migration.detect_bitwarden_vault')" type="warning" :closable="false" class="mb-15" />
+      <el-alert v-else-if="currentImportType === 'bitwarden_pass_encrypted'" :title="$t('migration.detect_bitwarden_pass')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else :title="$t('migration.detect_system')" type="success" :closable="false" class="mb-15" />
       <el-form label-position="top">
         <el-form-item :label="$t('migration.input_decrypt_pwd_label')">
@@ -188,7 +188,8 @@ const triggerUpload = () => {
 import icon2FAS from '@/shared/components/icons/icon2FAS.vue'
 import iconAegis from '@/shared/components/icons/iconAegis.vue'
 import iconGoogleAuth from '@/shared/components/icons/iconGoogleAuth.vue'
-import iconBitwarden from '@/shared/components/icons/iconBitwarden.vue'
+import iconBitwardenPass from '@/shared/components/icons/iconBitwardenPass.vue'
+import iconBitwardenAuth from '@/shared/components/icons/iconBitwardenAuth.vue'
 import iconMicrosoftAuth from '@/shared/components/icons/iconMicrosoftAuth.vue'
 import iconDashlanePass from '@/shared/components/icons/iconDashlanePass.vue'
 import iconProtonAuth from '@/shared/components/icons/iconProtonAuth.vue'

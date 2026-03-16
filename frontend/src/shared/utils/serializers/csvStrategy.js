@@ -51,7 +51,7 @@ export const csvStrategy = {
     },
 
     /**
-     * Decode a generic or bitwarden (vault) CSV string.
+     * Decode a generic or bitwarden Password CSV string.
      * @param {string} csvText 
      * @returns {VaultItem[]}
      */
@@ -63,14 +63,14 @@ export const csvStrategy = {
         const headers = this._splitCsvLine(lines[0]).map(h => h.toLowerCase())
         const rawVault = []
 
-        const isBitwardenVault = headers.includes('login_totp')
+        const isBitwardenPass = headers.includes('login_totp')
         const isBitwardenAuth = headers.includes('otpauth') && !headers.includes('title')
         const is1Password = headers.includes('otpauth') && headers.includes('title')
         const isProtonPass = headers.includes('totp') && headers.includes('vault') && headers.includes('createtime')
         const isDashlane = headers.includes('otpurl') && headers.includes('title') && headers.includes('username')
         const isGeneric = headers.includes('issuer') || headers.includes('secret') || headers.includes('name')
 
-        if (!isBitwardenVault && !isBitwardenAuth && !is1Password && !isProtonPass && !isDashlane && !isGeneric) return []
+        if (!isBitwardenPass && !isBitwardenAuth && !is1Password && !isProtonPass && !isDashlane && !isGeneric) return []
 
         for (let i = 1; i < lines.length; i++) {
             const row = this._splitCsvLine(lines[i])
@@ -87,7 +87,7 @@ export const csvStrategy = {
                         rawVault.push(accData)
                     }
                 }
-            } else if (isBitwardenVault || isBitwardenAuth) {
+            } else if (isBitwardenPass || isBitwardenAuth) {
                 const totpStr = (rowData['login_totp'] || rowData['otpauth'] || rowData['totp'] || '').trim()
                 if (totpStr) {
                     let accData = null

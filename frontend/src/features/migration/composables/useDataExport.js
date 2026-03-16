@@ -129,6 +129,10 @@ export function useDataExport() {
                     mimeType = 'text/csv'
                     filename = `2fauth-worker-export-csv-${date}.csv`
                     break
+                case 'bitwarden_auth_csv':
+                    mimeType = 'text/csv'
+                    filename = `2fauth-worker-export-bitwarden-auth-${date}.csv`
+                    break
                 case 'bitwarden_auth_json':
                     mimeType = 'application/json'
                     filename = `2fauth-worker-export-bitwarden-auth-${date}.json`

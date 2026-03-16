@@ -4,5 +4,5 @@
   </svg>
 </template>
 <script>
-export default { name: 'iconBitwarden' }
+export default { name: 'iconBitwardenPass' }
 </script>

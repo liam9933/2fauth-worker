@@ -237,19 +237,13 @@
 .migration-ms-tip code {
     display: block;
     margin-top: 6px;
-    padding: 6px 10px;
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 4px;
     font-family: var(--el-font-family-mono);
     font-size: 11px;
     word-break: break-all;
     color: var(--el-text-color-regular);
-    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 html.dark .migration-ms-tip code {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
     color: var(--el-text-color-secondary);
 }
 
