@@ -1,4 +1,4 @@
-import { defineAsyncComponent, h, ref, onMounted, onUnmounted } from 'vue'
+import { defineAsyncComponent, h, ref, onMounted, onUnmounted, defineComponent } from 'vue'
 import { ElEmpty, ElButton } from 'element-plus'
 import { i18n } from '@/locales'
 
@@ -8,9 +8,21 @@ import { i18n } from '@/locales'
  */
 export function createAsyncComponent(loader) {
     return defineAsyncComponent({
-        loader,
+        loader: async () => {
+            console.log('[AsyncComponent] Starting to load component...')
+            try {
+                const comp = await loader()
+                console.log('[AsyncComponent] Component loaded successfully')
+                return comp
+            } catch (err) {
+                console.error('[AsyncComponent] Component load failed:', err)
+                throw err
+            }
+        },
+        
         // 加载中占位
-        loadingComponent: {
+        loadingComponent: defineComponent({
+            name: 'AsyncLoading',
             setup() {
                 const dots = ref('...')
                 let timer = null
@@ -29,29 +41,48 @@ export function createAsyncComponent(loader) {
                     if (timer) clearInterval(timer)
                 })
 
+                // 使用闭包渲染函数，这是 Vue3 推荐的最稳健方式
                 return () => h('div', {
-                    style: 'display: flex; justify-content: center; align-items: center; min-height: 400px; width: 100%;'
+                    style: {
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '400px',
+                        width: '100%',
+                        backgroundColor: 'transparent'
+                    }
                 }, [
                     h('div', {
                         class: 'is-loading',
-                        style: `
-                            font-size: 24px; 
-                            font-family: monospace; 
-                            color: var(--el-color-primary);
-                            font-weight: 500;
-                            letter-spacing: 1px;
-                        `
+                        style: {
+                            fontSize: '24px', 
+                            fontFamily: 'monospace', 
+                            color: 'var(--el-color-primary)',
+                            fontWeight: '500',
+                            letterSpacing: '1px'
+                        }
                     }, `Loading${dots.value}`)
                 ])
             }
-        },
+        }),
+
         // 失败占位
-        errorComponent: {
+        errorComponent: defineComponent({
+            name: 'AsyncError',
             props: ['error'],
-            render() {
-                const { t } = i18n.global
-                return h('div', {
-                    style: 'padding: 40px; text-align: center;'
+            setup(props) {
+                console.error('[AsyncComponent] Rendering error component:', props.error)
+                
+                const t = (key) => {
+                    try {
+                        return i18n.global.t(key)
+                    } catch (e) {
+                        return key
+                    }
+                }
+
+                return () => h('div', {
+                    style: { padding: '40px', textAlign: 'center' }
                 }, [
                     h(ElEmpty, { description: t('common.loading_failed') }, {
                         default: () => h(ElButton, {
@@ -61,16 +92,17 @@ export function createAsyncComponent(loader) {
                     })
                 ])
             }
-        },
-        // 超时设置
-        timeout: 15000,
-        // 延迟显示加载组件
+        }),
+
+        // 延迟显示加载组件 (防止闪烁)
         delay: 200,
+        // 超时设置 (15秒)
+        timeout: 15000,
         // 错误重试逻辑
         onError(error, retry, fail, attempts) {
             if (attempts <= 3) {
                 console.warn(`[AsyncComponent] Loading failed, retrying (${attempts}/3)...`, error)
-                retry()
+                setTimeout(() => retry(), 1000)
             } else {
                 fail()
             }
