@@ -66,9 +66,11 @@ export const csvStrategy = {
         const isBitwardenVault = headers.includes('login_totp')
         const isBitwardenAuth = headers.includes('otpauth') && !headers.includes('title')
         const is1Password = headers.includes('otpauth') && headers.includes('title')
+        const isProtonPass = headers.includes('totp') && headers.includes('vault') && headers.includes('createtime')
+        const isDashlane = headers.includes('otpurl') && headers.includes('title') && headers.includes('username')
         const isGeneric = headers.includes('issuer') || headers.includes('secret') || headers.includes('name')
 
-        if (!isBitwardenVault && !isBitwardenAuth && !is1Password && !isGeneric) return []
+        if (!isBitwardenVault && !isBitwardenAuth && !is1Password && !isProtonPass && !isDashlane && !isGeneric) return []
 
         for (let i = 1; i < lines.length; i++) {
             const row = this._splitCsvLine(lines[i])
@@ -111,6 +113,28 @@ export const csvStrategy = {
                     if (accData) {
                         accData.service = rowData['name'] || accData.service
                         accData.account = rowData['login_username'] || accData.account
+                        rawVault.push(accData)
+                    }
+                }
+            } else if (isProtonPass) {
+                const totpStr = (rowData['totp'] || '').trim()
+                if (totpStr && totpStr.startsWith('otpauth://')) {
+                    const accData = parseOtpUri(totpStr)
+                    if (accData) {
+                        accData.service = rowData['name'] || accData.service
+                        accData.account = rowData['username'] || accData.account
+                        accData.category = rowData['vault'] || ''
+                        rawVault.push(accData)
+                    }
+                }
+            } else if (isDashlane) {
+                const totpStr = (rowData['otpurl'] || '').trim()
+                if (totpStr && totpStr.startsWith('otpauth://')) {
+                    const accData = parseOtpUri(totpStr)
+                    if (accData) {
+                        accData.service = rowData['title'] || accData.service
+                        accData.account = rowData['username'] || accData.account
+                        accData.category = rowData['category'] || ''
                         rawVault.push(accData)
                     }
                 }

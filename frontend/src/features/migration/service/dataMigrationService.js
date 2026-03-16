@@ -5,7 +5,8 @@ import { tryParseJSON } from '@/shared/utils/encoding'
 import { gaMigrationStrategy } from '@/shared/utils/serializers/gauthStrategy'
 import { csvStrategy } from '@/shared/utils/serializers/csvStrategy'
 import { aegisStrategy } from '@/shared/utils/serializers/aegisStrategy'
-import protonStrategy from '@/shared/utils/serializers/protonStrategy'
+import { protonAuthStrategy } from '@/shared/utils/serializers/protonAuthStrategy'
+import { protonPassStrategy } from '@/shared/utils/serializers/protonPassStrategy'
 import { enteStrategy } from '@/shared/utils/serializers/enteStrategy'
 import { migrationError } from '@/shared/utils/errors/migrationError'
 import { unzipSync } from 'fflate'
@@ -75,7 +76,9 @@ export const dataMigrationService = {
             const firstLine = typeof textContent === 'string' ? textContent.split('\n')[0].toLowerCase() : ''
             if (firstLine.includes('login_totp')) return 'bitwarden_vault_csv'
             if (firstLine.includes('title') && firstLine.includes('otpauth')) return '1password_csv'
-            if (firstLine.includes('otpauth')) return 'bitwarden_auth_csv' // Bitwarden Auth standalone typically exports simpler CSV
+            if (firstLine.includes('otpauth')) return 'bitwarden_auth_csv'
+            if (firstLine.includes('totp') && firstLine.includes('vault') && firstLine.includes('createtime')) return 'proton_pass_csv'
+            if (firstLine.includes('otpurl') && firstLine.includes('title') && firstLine.includes('username')) return 'dashlane_csv'
             return 'generic_csv'
         }
 
@@ -99,12 +102,16 @@ export const dataMigrationService = {
                 if (json.schemaVersion && Array.isArray(json.services)) return '2fas'
                 if (json.version === 1 && json.db && typeof json.db === 'object' && Array.isArray(json.db.entries)) return 'aegis' // Aegis unencrypted
                 if (json.version === 1 && json.header && json.db && typeof json.db === 'string') return 'aegis_encrypted'
-                if (json.version === 1 && typeof json.salt === 'string' && typeof json.content === 'string') return 'proton_encrypted'
+                if (json.version === 1 && typeof json.salt === 'string' && typeof json.content === 'string') return 'proton_auth_encrypted'
                 // Ente Auth 加密导出：同时包含 kdfParams 和 encryptedData 两个关键字段
                 if (json.kdfParams && typeof json.encryptedData === 'string') return 'ente_encrypted'
                 // Bitwarden password-protected export (Vault)
                 if (json.encrypted === true && json.passwordProtected === true && json.encKeyValidation_DO_NOT_EDIT) return 'bitwarden_vault_encrypted'
             }
+        }
+
+        if (typeof textContent === 'string' && textContent.includes('-----BEGIN PGP MESSAGE-----')) {
+            return 'proton_pass_pgp'
         }
 
         if (filename) {
@@ -1091,8 +1098,17 @@ export const dataMigrationService = {
             type = 'raw'
         }
 
-        if (type === 'proton_encrypted') {
-            rawVault = await protonStrategy.parse(content, password)
+        if (type === 'proton_auth_encrypted') {
+            if (!password) throw new migrationError('导入 Proton Authenticator 备份需要密码', 'MISSING_PASSWORD')
+            rawVault = await protonAuthStrategy.parse(content, password)
+            type = 'raw'
+            content = JSON.stringify(rawVault)
+            password = undefined
+        }
+
+        if (type === 'proton_pass_pgp') {
+            if (!password) throw new migrationError('导入 Proton Pass 备份需要密码', 'MISSING_PASSWORD')
+            rawVault = await protonPassStrategy.parse(content, password)
             type = 'raw'
             content = JSON.stringify(rawVault)
             password = undefined
@@ -1272,7 +1288,7 @@ export const dataMigrationService = {
                 }))
             }
         }
-        else if (type === 'bitwarden_vault_csv' || type === 'bitwarden_auth_csv' || type === '1password_csv' || type === 'generic_csv') rawVault = csvStrategy.parseCsv(content)
+        else if (type === 'bitwarden_vault_csv' || type === 'bitwarden_auth_csv' || type === '1password_csv' || type === 'proton_pass_csv' || type === 'dashlane_csv' || type === 'generic_csv') rawVault = csvStrategy.parseCsv(content)
 
         return rawVault.map(acc => {
             if (typeof acc.account === 'string' && acc.account.includes(':')) {

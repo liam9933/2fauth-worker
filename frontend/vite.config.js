@@ -84,7 +84,8 @@ export default defineConfig({
           '**/assets/pdf-utils*.js',
           '**/assets/compression-utils*.js',
           '**/assets/dataImport*.js',
-          '**/assets/dataMigrationService*.js'
+          '**/assets/dataMigrationService*.js',
+          '**/assets/openpgp*.js'
         ],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
@@ -117,7 +118,7 @@ export default defineConfig({
           },
           {
             // 为被 globIgnores 忽略的大体积工具 JS chunk 配置动态缓存
-            urlPattern: /assets\/(wa-sqlite|argon2|hash-wasm|libsodium-wrappers|sql|jsQR|pdf-utils|compression-utils|dataImport|dataMigrationService).*\.js$/i,
+            urlPattern: /assets\/(wa-sqlite|argon2|hash-wasm|libsodium-wrappers|sql|jsQR|pdf-utils|compression-utils|dataImport|dataMigrationService|openpgp).*\.js$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'lazy-tools-js-cache',
@@ -189,6 +190,9 @@ export default defineConfig({
 
             // 二维码处理相关 (体积较大且仅特定页面使用)
             if (id.includes('/node_modules/qrcode/') || id.includes('/node_modules/jsqr/')) return 'qr-utils'
+
+            // 加密相关：OpenPGP (体积大且仅特定导入场景使用)
+            if (id.includes('/node_modules/openpgp/')) return 'openpgp'
 
             // 大型 UI 支撑库
             if (id.includes('/node_modules/@tanstack/')) return 'tanstack-query'

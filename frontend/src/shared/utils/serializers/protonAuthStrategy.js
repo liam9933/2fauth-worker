@@ -1,8 +1,12 @@
 import argon2 from 'argon2-browser/dist/argon2-bundled.min.js';
 import { parseOtpUri } from '@/shared/utils/totp';
 
-export default {
-    name: 'Proton Pass (.json)',
+/**
+ * Proton Authenticator (.json) Strategy
+ * Uses Argon2id + AES-GCM
+ */
+export const protonAuthStrategy = {
+    name: 'Proton Authenticator (.json)',
     fileType: 'application/json, text/plain',
 
     async parse(fileContent, password) {
@@ -52,8 +56,6 @@ export default {
                 distPath: '/'
             });
 
-            // 2. Decrypt via Web Crypto API
-            // argon2-browser returns Uint8Array in argon2Result.hash
             const keyMaterial = argon2Result.hash;
 
             const cryptoKey = await window.crypto.subtle.importKey(
@@ -64,7 +66,7 @@ export default {
                 ['decrypt']
             );
 
-            // AAD defined in Rust
+            // AAD defined in Rust source of Proton Auth
             const aad = new TextEncoder().encode('proton.authenticator.export.v1');
 
             const decryptedBuffer = await window.crypto.subtle.decrypt(
@@ -81,7 +83,7 @@ export default {
             const decryptedString = new TextDecoder().decode(decryptedBuffer);
             const decryptedJson = JSON.parse(decryptedString);
 
-            // 3. Parse items
+            // Parse items
             const entries = decryptedJson.entries || [];
             const results = [];
 
@@ -97,8 +99,7 @@ export default {
             return results;
 
         } catch (err) {
-            console.error('Proton decryption failed:', err);
-            // Must throw this precise message so UI prompts for password again if wrong
+            console.error('Proton Authenticator decryption failed:', err);
             throw new Error('INVALID_FORMAT_OR_PASSWORD');
         }
     }

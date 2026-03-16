@@ -182,7 +182,7 @@ export function useDataImport(emitFn) {
                     }
                 }
 
-                if (detectedType === '2fauth_encrypted' || detectedType === 'aegis_encrypted' || detectedType === 'proton_encrypted' || detectedType === '2fas_encrypted' || detectedType === 'ente_encrypted' || detectedType === 'bitwarden_vault_encrypted') {
+                if (detectedType === '2fauth_encrypted' || detectedType === 'aegis_encrypted' || detectedType === 'proton_auth_encrypted' || detectedType === 'proton_pass_pgp' || detectedType === '2fas_encrypted' || detectedType === 'ente_encrypted' || detectedType === 'bitwarden_vault_encrypted') {
                     importPassword.value = ''
                     isDialogHandled.value = false
                     showDecryptDialog.value = true

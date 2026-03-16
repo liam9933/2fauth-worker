@@ -377,41 +377,35 @@
     background: var(--el-fill-color-light);
     color: var(--el-text-color-regular);
     padding: 3px 10px 4px 10px;
-    border-radius: 4px;
+    border-radius: 3px;
     font-size: 13px;
     white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
-    border: 1px solid transparent;
+    border: 1px solid var(--el-fill-color-light);
 }
 
 .category-tag:hover {
     background: var(--el-fill-color);
 }
 
-/* Final Choice: Option 1 - Subtle Glassmorphism (毛玻璃高亮) */
+/* 分类 Chips 选中状态对齐 .vault-card.is-selected */
 .category-tag.is-active {
-    background-color: var(--el-color-primary-light-9) !important;
+    background-color: var(--vault-selected-bg) !important;
+    border: 1px solid #409EFF !important;
     color: var(--el-color-primary) !important;
-    border-color: var(--el-color-primary-light-5) !important;
-}
-
-/* 适配深色模式下的透明度感 */
-html.dark .category-tag.is-active {
-    background-color: rgba(64, 158, 255, 0.15) !important;
-    border-color: rgba(64, 158, 255, 0.4) !important;
-    color: var(--el-color-primary-light-3) !important;
 }
 
 .category-tag.is-active .tag-count {
     color: var(--el-color-primary) !important;
-    opacity: 0.7;
+    opacity: 0.9;
 }
 
-html.dark .category-tag.is-active .tag-count {
-    color: var(--el-color-primary-light-3) !important;
+/* 适配深色模式下的透明度感 */
+html.dark .category-tag.is-active {
+    border: none !important;
+    background-color: rgba(64, 158, 255, 0.2) !important;
 }
 
 .tag-count {

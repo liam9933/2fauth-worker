@@ -61,7 +61,9 @@
                 </h4>
                 <div class="ecosystem-grid">
                   <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconBitwarden /></el-icon> Bitwarden Vault (.json/.csv)</el-button>
-                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><icon1Password /></el-icon> {{ $t('migration.onepassword_format') }}</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><icon1Password /></el-icon> 1Password (.1pux/.csv)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconProtonPass /></el-icon> Proton Pass (.pgp/.csv)</el-button>
+                  <el-button plain class="migration-button-with-icon" @click="triggerUpload"><el-icon><iconDashlanePass /></el-icon> Dashlane (.csv)</el-button>
                 </div>
               </div>
 
@@ -99,7 +101,7 @@
 
             <!-- 详细引导 -->
             <el-divider border-style="dashed" content-position="center" class="mt-30">
-              <span class="text-secondary font-12">{{ $t('migration.ga_ms_import_guide') }}</span>
+              <span class="text-secondary font-12">{{ $t('migration.import_guide') }}</span>
             </el-divider>
 
             <div class="guide-section">
@@ -149,7 +151,8 @@
     <!-- 加密文件密码输入弹窗 -->
     <el-dialog v-model="showDecryptDialog" :title="$t('migration.decrypt_backup_title')" :width="layoutStore.isMobile ? '90%' : '400px'" @close="handleDecryptDialogClose" destroy-on-close>
       <el-alert v-if="currentImportType === 'aegis_encrypted'" :title="$t('migration.detect_aegis')" type="warning" :closable="false" class="mb-15" />
-      <el-alert v-else-if="currentImportType === 'proton_encrypted'" :title="$t('migration.detect_proton')" type="warning" :closable="false" class="mb-15" />
+      <el-alert v-else-if="currentImportType === 'proton_auth_encrypted'" :title="$t('migration.detect_proton_auth')" type="warning" :closable="false" class="mb-15" />
+      <el-alert v-else-if="currentImportType === 'proton_pass_pgp'" :title="$t('migration.detect_proton_pass')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === '2fas_encrypted'" :title="$t('migration.detect_2fas')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === 'ente_encrypted'" :title="$t('migration.detect_ente')" type="warning" :closable="false" class="mb-15" />
       <el-alert v-else-if="currentImportType === 'bitwarden_vault_encrypted'" :title="$t('migration.detect_bitwarden_vault')" type="warning" :closable="false" class="mb-15" />
@@ -187,7 +190,9 @@ import iconAegis from '@/shared/components/icons/iconAegis.vue'
 import iconGoogleAuth from '@/shared/components/icons/iconGoogleAuth.vue'
 import iconBitwarden from '@/shared/components/icons/iconBitwarden.vue'
 import iconMicrosoftAuth from '@/shared/components/icons/iconMicrosoftAuth.vue'
+import iconDashlanePass from '@/shared/components/icons/iconDashlanePass.vue'
 import iconProtonAuth from '@/shared/components/icons/iconProtonAuth.vue'
+import iconProtonPass from '@/shared/components/icons/iconProtonPass.vue'
 import iconEnte from '@/shared/components/icons/iconEnte.vue'
 import icon1Password from '@/shared/components/icons/icon1Password.vue'
 import iconLastPassAuth from '@/shared/components/icons/iconLastPassAuth.vue'

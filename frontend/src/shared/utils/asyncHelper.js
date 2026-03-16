@@ -1,5 +1,6 @@
-import { defineAsyncComponent, h } from 'vue'
+import { defineAsyncComponent, h, ref, onMounted, onUnmounted } from 'vue'
 import { ElEmpty, ElButton } from 'element-plus'
+import { i18n } from '@/locales'
 
 /**
  * 增强的异步组件工厂函数
@@ -10,14 +11,37 @@ export function createAsyncComponent(loader) {
         loader,
         // 加载中占位
         loadingComponent: {
-            render() {
-                return h('div', {
+            setup() {
+                const dots = ref('...')
+                let timer = null
+
+                onMounted(() => {
+                    timer = setInterval(() => {
+                        if (dots.value.length >= 10) {
+                            dots.value = '...'
+                        } else {
+                            dots.value += '.'
+                        }
+                    }, 400)
+                })
+
+                onUnmounted(() => {
+                    if (timer) clearInterval(timer)
+                })
+
+                return () => h('div', {
                     style: 'display: flex; justify-content: center; align-items: center; min-height: 400px; width: 100%;'
                 }, [
                     h('div', {
                         class: 'is-loading',
-                        style: 'font-size: 24px;'
-                    }, 'Loading...')
+                        style: `
+                            font-size: 24px; 
+                            font-family: monospace; 
+                            color: var(--el-color-primary);
+                            font-weight: 500;
+                            letter-spacing: 1px;
+                        `
+                    }, `Loading${dots.value}`)
                 ])
             }
         },
@@ -25,14 +49,15 @@ export function createAsyncComponent(loader) {
         errorComponent: {
             props: ['error'],
             render() {
+                const { t } = i18n.global
                 return h('div', {
                     style: 'padding: 40px; text-align: center;'
                 }, [
-                    h(ElEmpty, { description: '组件加载失败，请检查网络连接' }, {
+                    h(ElEmpty, { description: t('common.loading_failed') }, {
                         default: () => h(ElButton, {
                             type: 'primary',
                             onClick: () => window.location.reload()
-                        }, '刷新页面')
+                        }, t('common.refresh_now'))
                     })
                 ])
             }
