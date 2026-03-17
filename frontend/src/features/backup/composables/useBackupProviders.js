@@ -20,6 +20,9 @@ export function useBackupProviders() {
     const isEditing = ref(false)
     const isTesting = ref(false)
     const isSaving = ref(false)
+    const testingProviderIds = ref({}) // { providerId: true }
+    const testResults = ref({}) // { providerId: 'success' | 'error' }
+
     const isEditingWebdavPwd = ref(false)
     const isEditingS3Secret = ref(false)
     const isEditingTelegramToken = ref(false)
@@ -174,11 +177,22 @@ export function useBackupProviders() {
         return null
     }
 
-    const testConnection = async () => {
-        const error = validateForm()
-        if (error) return ElMessage.warning(error)
+    const testConnection = async (provider = null) => {
+        const isIndividual = !!provider
+        const targetData = isIndividual ? provider : form.value
+        const targetId = isIndividual ? provider.id : (isEditing.value ? currentProviderId.value : null)
 
-        isTesting.value = true;
+        if (!isIndividual) {
+            const error = validateForm()
+            if (error) return ElMessage.warning(error)
+        }
+
+        if (isIndividual) {
+            testingProviderIds.value[targetId] = true
+        } else {
+            isTesting.value = true
+        }
+
         // Only reset error states, keep 'success' state if it exists
         if (authStatusGoogle.value === 'error') authStatusGoogle.value = null;
         authErrorMessageGoogle.value = '';
@@ -191,14 +205,19 @@ export function useBackupProviders() {
 
         try {
             const res = await backupService.testConnection(
-                form.value.type,
-                form.value.config,
-                isEditing.value ? currentProviderId.value : null
+                targetData.type,
+                targetData.config,
+                targetId
             )
             if (res.success) {
                 ElMessage.success(t('backup.test_success'))
+
+                if (isIndividual) {
+                    testResults.value[targetId] = 'success'
+                }
+
                 // Ensure the success status is reflected in the UI for OAuth providers
-                const type = form.value.type
+                const type = targetData.type
                 if (type === 'gdrive') authStatusGoogle.value = 'success'
                 else if (type === 'onedrive') authStatusMicrosoft.value = 'success'
                 else if (type === 'baidu') authStatusBaidu.value = 'success'
@@ -211,11 +230,13 @@ export function useBackupProviders() {
 
             // Listen for the standard project-level OAuth revocation signal
             if (errMsg.includes('oauth_token_revoked')) {
-                const type = form.value.type;
+                const type = targetData.type;
                 console.error(`[OAuth Auth Check] The authorization token for ${type} is revoked or expired. Attempting UI reset...`, e);
 
                 // Reset the internal token holder
-                form.value.config.refreshToken = '';
+                if (!isIndividual) {
+                    form.value.config.refreshToken = '';
+                }
 
                 // Switch UI back to authentication state
                 if (type === 'gdrive') {
@@ -233,13 +254,19 @@ export function useBackupProviders() {
                 }
 
                 // If we are editing an existing provider, update the global store to reflect the state
-                if (isEditing.value && currentProviderId.value) {
-                    backupStore.markAsRevoked(currentProviderId.value);
+                if (targetId) {
+                    backupStore.markAsRevoked(targetId);
                 }
             } else {
                 ElMessage.error(t(`api_errors.${errMsg}`) || rawMsg);
             }
-        } finally { isTesting.value = false }
+        } finally {
+            if (isIndividual) {
+                delete testingProviderIds.value[targetId]
+            } else {
+                isTesting.value = false
+            }
+        }
     }
 
     const saveProvider = async () => {
@@ -493,6 +520,8 @@ export function useBackupProviders() {
         isEditing,
         isTesting,
         isSaving,
+        testingProviderIds,
+        testResults,
         isEditingWebdavPwd,
         isEditingS3Secret,
         isEditingTelegramToken,

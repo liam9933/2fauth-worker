@@ -1,3 +1,7 @@
+.security-wrapper .tab-card-wrapper {
+    padding-bottom: 40px;
+}
+
 .security-wrapper .empty-state {
     padding: 60px 0;
 }

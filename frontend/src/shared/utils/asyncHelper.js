@@ -19,32 +19,59 @@ export function createAsyncComponent(loader) {
                 throw err
             }
         },
-        
+
         // 加载中占位
         loadingComponent: defineComponent({
             name: 'AsyncLoading',
             setup() {
-                const dots = ref('...')
-                let timer = null
+                const t = (key) => {
+                    try {
+                        return i18n.global.t(key)
+                    } catch (e) {
+                        return key
+                    }
+                }
 
-                onMounted(() => {
-                    timer = setInterval(() => {
-                        if (dots.value.length >= 10) {
-                            dots.value = '...'
-                        } else {
-                            dots.value += '.'
+                // 使用 CSS 关键帧动画注入（最轻量、无副作用）
+                const injectStyles = () => {
+                    if (document.getElementById('async-loading-styles')) return
+                    const style = document.createElement('style')
+                    style.id = 'async-loading-styles'
+                    style.textContent = `
+                        @keyframes async-progress-flow {
+                            0% { transform: translateX(-100%); }
+                            100% { transform: translateX(100%); }
                         }
-                    }, 400)
-                })
+                        .async-progress-bar {
+                            width: 200px;
+                            height: 3px;
+                            background: rgba(64, 158, 255, 0.1);
+                            border-radius: 4px;
+                            overflow: hidden;
+                            position: relative;
+                            margin-top: 16px;
+                        }
+                        .async-progress-inner {
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 50%;
+                            height: 100%;
+                            background: var(--el-color-primary);
+                            border-radius: 4px;
+                            animation: async-progress-flow 1.5s infinite ease-in-out;
+                            box-shadow: 0 0 8px var(--el-color-primary);
+                        }
+                    `
+                    document.head.appendChild(style)
+                }
 
-                onUnmounted(() => {
-                    if (timer) clearInterval(timer)
-                })
+                onMounted(injectStyles)
 
-                // 使用闭包渲染函数，这是 Vue3 推荐的最稳健方式
                 return () => h('div', {
                     style: {
                         display: 'flex',
+                        flexDirection: 'column',
                         justifyContent: 'center',
                         alignItems: 'center',
                         minHeight: '400px',
@@ -52,16 +79,19 @@ export function createAsyncComponent(loader) {
                         backgroundColor: 'transparent'
                     }
                 }, [
+                    // 文案优化 - 适配多语言
                     h('div', {
-                        class: 'is-loading',
                         style: {
-                            fontSize: '24px', 
-                            fontFamily: 'monospace', 
-                            color: 'var(--el-color-primary)',
+                            fontSize: '16px',
+                            color: 'var(--el-text-color-regular)',
                             fontWeight: '500',
                             letterSpacing: '1px'
                         }
-                    }, `Loading${dots.value}`)
+                    }, t('common.resource_loading')),
+                    // 线性进度条
+                    h('div', { class: 'async-progress-bar' }, [
+                        h('div', { class: 'async-progress-inner' })
+                    ])
                 ])
             }
         }),
@@ -72,7 +102,7 @@ export function createAsyncComponent(loader) {
             props: ['error'],
             setup(props) {
                 console.error('[AsyncComponent] Rendering error component:', props.error)
-                
+
                 const t = (key) => {
                     try {
                         return i18n.global.t(key)
@@ -100,9 +130,9 @@ export function createAsyncComponent(loader) {
         timeout: 15000,
         // 错误重试逻辑
         onError(error, retry, fail, attempts) {
-            if (attempts <= 3) {
-                console.warn(`[AsyncComponent] Loading failed, retrying (${attempts}/3)...`, error)
-                setTimeout(() => retry(), 1000)
+            if (attempts <= 2) {
+                console.warn(`[AsyncComponent] Loading failed, retrying (${attempts}/2)...`, error)
+                setTimeout(() => retry(), 500)
             } else {
                 fail()
             }

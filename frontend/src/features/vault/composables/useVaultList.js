@@ -1,5 +1,5 @@
 import { ref, shallowRef, computed, watch } from 'vue'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/vue-query'
+import { useInfiniteQuery, useQueryClient, keepPreviousData } from '@tanstack/vue-query'
 import { useVaultStore } from '@/features/vault/store/vaultStore'
 import { vaultService } from '@/features/vault/service/vaultService'
 
@@ -35,7 +35,7 @@ export function useVaultList(afterLoadRef = null) {
         const firstPage = data.value?.pages?.[0]
         const stats = firstPage?.categoryStats || localCategoryStats.value
         if (!stats) return []
-        
+
         return stats.map(s => ({
             category: s.category || '',
             count: s.count,
@@ -77,6 +77,7 @@ export function useVaultList(afterLoadRef = null) {
         // 60 秒内切换回来直接用缓存，不触发逐页重拉（避免多次 PBKDF2 saveData 开销）
         // invalidateQueries / resetQueries 调用时会忽略 staleTime，强制立即刷新
         staleTime: 60 * 1000,
+        placeholderData: keepPreviousData,
     })
 
     // 监听数据变化，同步到本地 vault 引用
@@ -136,13 +137,13 @@ export function useVaultList(afterLoadRef = null) {
         if (!searchQuery.value && vaultStore.isUnlocked) {
             setTimeout(async () => {
                 try {
-                    await vaultStore.saveData({ 
+                    await vaultStore.saveData({
                         vault: merged,
                         // 保存当前分类统计原始数据到持久层
                         categoryStats: newData.pages[0]?.categoryStats || []
                     })
                     vaultStore.clearDirty()
-                } catch (e) {}
+                } catch (e) { }
             }, 0)
         }
     }, { deep: false })

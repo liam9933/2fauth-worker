@@ -36,29 +36,42 @@
             <div class="category-chips">
               <div
                 class="category-tag"
-                :class="{ 'is-active': selectedCategory === '' }"
+                :class="{ 
+                  'is-active': selectedCategory === '',
+                  'is-loading': isFetching && selectedCategory === '' && !isFetchingNextPage
+                }"
                 @click="selectedCategory = ''"
               >
                 {{ $t('common.all') }}
                 <span class="tag-count">({{ absoluteTotalItems }})</span>
+                <!-- 独立加载轨道，避免截断文字 -->
+                <div v-if="isFetching && selectedCategory === '' && !isFetchingNextPage" class="tag-loading-track">
+                  <div class="tag-loading-bar"></div>
+                </div>
               </div>
               <div
                 v-for="stat in categoryStats"
                 :key="stat.id"
                 class="category-tag"
-                :class="{ 'is-active': selectedCategory === stat.id }"
+                :class="{ 
+                  'is-active': selectedCategory === stat.id,
+                  'is-loading': isFetching && selectedCategory === stat.id && !isFetchingNextPage
+                }"
                 @click="selectedCategory = stat.id"
               >
                 {{ stat.category || $t('common.uncategorized') }}
                 <span class="tag-count">({{ stat.count }})</span>
+                <div v-if="isFetching && selectedCategory === stat.id && !isFetchingNextPage" class="tag-loading-track">
+                  <div class="tag-loading-bar"></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </el-affix>
 
-      <!-- 1. 加载中 -->
-      <div v-if="(isInitializing || isLoading || isFetching) && vault.length === 0" class="flex-column flex-center min-h-400 text-secondary">
+      <!-- 1. 加载中 (仅在真正没有任何数据或初始化时显示大加载态) -->
+      <div v-if="isInitializing || (isLoading && vault.length === 0)" class="flex-column flex-center min-h-400 text-secondary">
         <el-icon class="is-loading mb-20 text-primary" :size="48"><Loading /></el-icon>
         <p class="text-16 ls-1">{{ $t('common.loading_data') }}</p>
       </div>

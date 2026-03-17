@@ -48,6 +48,18 @@
 
             <div class="backup-action-buttons">
               <el-button
+                type="primary" plain size="small"
+                :loading="!!testingProviderIds[provider.id]"
+                :disabled="testResults[provider.id] === 'success'"
+                :class="{ 'btn-test-success': testResults[provider.id] === 'success' }"
+                @click="testConnection(provider)"
+              >
+                <el-icon v-if="testResults[provider.id] === 'success'" color="#67C23A" style="margin-right: 4px;">
+                  <CircleCheck />
+                </el-icon>
+                {{ testResults[provider.id] === 'success' ? $t('backup.connection_normal') : $t('backup.test_connection') }}
+              </el-button>
+              <el-button
                 type="success" plain size="small"
                 :loading="checkingBackupProviderId === provider.id"
                 @click="openBackupDialog(provider)"
@@ -471,7 +483,7 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="testConnection" :loading="isTesting">{{ $t('backup.test_connection') }}</el-button>
+        <el-button @click="() => testConnection()" :loading="isTesting">{{ $t('backup.test_connection') }}</el-button>
         <el-button type="primary" @click="saveProvider" :loading="isSaving">{{ $t('backup.save') }}</el-button>
       </template>
     </el-dialog>
@@ -554,6 +566,7 @@ const layoutStore = useLayoutStore()
 
 const {
   providers, isLoading, showConfigDialog, isEditing, isTesting, isSaving,
+  testingProviderIds, testResults,
   isEditingWebdavPwd, isEditingS3Secret, isEditingTelegramToken, isEditingEmailPwd, form,
   isAutoBackupPasswordSaved, shouldUseExistingAutoBackupPassword, fetchProviders, openAddDialog,
   editProvider, testConnection, saveProvider, deleteProvider,

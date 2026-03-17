@@ -35,7 +35,7 @@
             </span>
           </el-divider>
 
-          <div class="compatibility-container mt-20">
+          <div class="compatibility-container mt-20 mb-10">
             <div class="ecosystem-groups">
               <!-- 组1: 本系统 -->
               <div class="ecosystem-group-card">

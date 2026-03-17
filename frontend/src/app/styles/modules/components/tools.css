@@ -1,6 +1,11 @@
 /* =========================================
    4. UtilityTools 组件 (工具箱)
    ========================================= */
+
+.tools-wrapper .tab-card-wrapper {
+    padding-bottom: 40px;
+}
+
 .tools-header {
     display: flex;
     align-items: center;

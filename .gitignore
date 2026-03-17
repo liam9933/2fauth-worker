@@ -56,7 +56,7 @@ yarn-error.log*
 .wrangler/
 **/.wrangler/
 # Gemini/AI assistant state
-.gemini/
+.antigravity
 # Act (local GitHub Actions) configuration and state
 .actrc
 .event
